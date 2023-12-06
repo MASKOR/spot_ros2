@@ -13,6 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
   cv_bridge
   geometry_msgs
+  image_transport
   rclcpp
   rclcpp_components
   sensor_msgs

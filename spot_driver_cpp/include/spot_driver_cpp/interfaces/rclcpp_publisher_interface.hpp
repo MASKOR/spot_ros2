@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <image_transport/camera_publisher.hpp>
+#include <image_transport/image_transport.hpp>
 #include <rclcpp/node.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <spot_driver_cpp/interfaces/publisher_interface_base.hpp>
@@ -42,10 +44,10 @@ class RclcppPublisherInterface : public PublisherInterfaceBase {
   /** @brief rclcpp node use to create the publishers. */
   std::shared_ptr<rclcpp::Node> node_;
 
-  /** @brief Map between image topic names and image publishers. */
-  std::unordered_map<std::string, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>>> image_publishers_;
+  /** @brief ImageTransport instance used to create CameraPublishers. */
+  image_transport::ImageTransport image_transport_;
 
-  /** @brief Map between camera info topic names and camera info publishers. */
-  std::unordered_map<std::string, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>>> info_publishers_;
+  /** @brief Map between image topic names and camera publishers. */
+  std::unordered_map<std::string, image_transport::CameraPublisher> publishers_;
 };
 }  // namespace spot_ros2
