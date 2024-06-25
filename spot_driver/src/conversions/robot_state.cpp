@@ -169,12 +169,9 @@ std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(
       !robot_state.kinematic_state().has_transforms_snapshot()) {
     return std::nullopt;
   }
-
   geometry_msgs::msg::TwistWithCovarianceStamped odom_twist_msg;
-  // TODO(schornakj): need to add the frame ID here?
   const auto& kinematic_state = robot_state.kinematic_state();
-  odom_twist_msg.header.stamp = spot_ros2::robotTimeToLocalTime(kinematic_state.acquisition_timestamp(), clock_skew);
-  const bosdyn::api::SE3Velocity velocity_of_body_in_odom = kinematic_state.velocity_of_body_in_odom();
+  const bosdyn::api::SE3Velocity& velocity_of_body_in_odom = kinematic_state.velocity_of_body_in_odom();
   // This now needs to be converted to velocity of body in body frame in order to follow ROS conventions.
   ::bosdyn::api::SE3Velocity velocity_of_body_in_body;
   const std::string odom_frame_name = "odom";
@@ -186,6 +183,8 @@ std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(
     return std::nullopt;
   }
   convertToRos(velocity_of_body_in_body, odom_twist_msg.twist.twist);
+  odom_twist_msg.header.stamp = spot_ros2::robotTimeToLocalTime(kinematic_state.acquisition_timestamp(), clock_skew);
+  odom_twist_msg.header.frame_id = body_frame_name;
   return odom_twist_msg;
 }
 
