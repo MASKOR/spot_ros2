@@ -13,9 +13,11 @@
 namespace {
 using ::testing::Eq;
 using ::testing::IsEmpty;
+using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Optional;
 using ::testing::StrEq;
+using ::testing::UnorderedElementsAre;
 
 constexpr auto kNodeName = "my_node_name";
 constexpr auto kNamespace = "my_namespace";
@@ -270,5 +272,94 @@ TEST_F(RclcppParameterInterfaceEnvVarTest, GetConfigDefaults) {
   EXPECT_THAT(parameter_interface.getPublishRGBImages(), IsTrue());
   EXPECT_THAT(parameter_interface.getPublishDepthImages(), IsTrue());
   EXPECT_THAT(parameter_interface.getPublishDepthRegisteredImages(), IsTrue());
+}
+
+TEST_F(RclcppParameterInterfaceEnvVarTest, GetCamerasUsedDefaultWithArm) {
+  // GIVEN we don't set the cameras_used parameter
+  // GIVEN we create a RclcppParameterInterface using the node
+  RclcppParameterInterface parameter_interface{node_};
+
+  // WHEN we call the functions to get the config values from the parameter interface
+  // THEN we get the default of all available cameras.
+  const auto cameras_used_arm = parameter_interface.getCamerasUsed(true);
+  EXPECT_THAT(cameras_used_arm.has_value(), IsTrue());
+  EXPECT_THAT(cameras_used_arm.value(),
+              UnorderedElementsAre(SpotCamera::FRONTLEFT, SpotCamera::FRONTRIGHT, SpotCamera::LEFT, SpotCamera::RIGHT,
+                                   SpotCamera::BACK, SpotCamera::HAND));
+}
+
+TEST_F(RclcppParameterInterfaceEnvVarTest, GetCamerasUsedDefaultWithoutArm) {
+  // Note: this cannot live in the same test as above, as the first call to getCamerasUsed will declare a parameter,
+  // and here we want to explicitly test what happens with no parameter declared.
+
+  // GIVEN we don't set the cameras_used parameter
+  // GIVEN we create a RclcppParameterInterface using the node
+  RclcppParameterInterface parameter_interface{node_};
+
+  // WHEN we call the functions to get the config values from the parameter interface
+  // THEN we get the default of all available cameras.
+  const auto cameras_used_no_arm = parameter_interface.getCamerasUsed(false);
+  EXPECT_THAT(cameras_used_no_arm.has_value(), IsTrue());
+  EXPECT_THAT(cameras_used_no_arm.value(), UnorderedElementsAre(SpotCamera::FRONTLEFT, SpotCamera::FRONTRIGHT,
+                                                                SpotCamera::LEFT, SpotCamera::RIGHT, SpotCamera::BACK));
+}
+
+TEST_F(RclcppParameterInterfaceEnvVarTest, GetCamerasUsedSubset) {
+  // GIVEN we set cameras used to a subset of the available cameras
+  const std::vector<std::string> cameras_used_parameter = {"frontleft", "frontright"};
+  node_->declare_parameter("cameras_used", cameras_used_parameter);
+
+  // GIVEN we create a RclcppParameterInterface using the node
+  RclcppParameterInterface parameter_interface{node_};
+
+  // WHEN we call the functions to get the config values from the parameter interface
+  // THEN the returned values match the values we used when declaring the parameters, regardless of if there is an arm
+  const auto cameras_used_arm = parameter_interface.getCamerasUsed(true);
+  EXPECT_THAT(cameras_used_arm.has_value(), IsTrue());
+  EXPECT_THAT(cameras_used_arm.value(), UnorderedElementsAre(SpotCamera::FRONTLEFT, SpotCamera::FRONTRIGHT));
+
+  const auto cameras_used_no_arm = parameter_interface.getCamerasUsed(false);
+  EXPECT_THAT(cameras_used_no_arm.has_value(), IsTrue());
+  EXPECT_THAT(cameras_used_no_arm.value(), UnorderedElementsAre(SpotCamera::FRONTLEFT, SpotCamera::FRONTRIGHT));
+}
+
+TEST_F(RclcppParameterInterfaceEnvVarTest, GetCamerasUsedSubsetWithHand) {
+  // GIVEN we set cameras used to a subset of the available cameras including the hand camera
+  const std::vector<std::string> cameras_used_parameter = {"frontleft", "frontright", "hand"};
+  node_->declare_parameter("cameras_used", cameras_used_parameter);
+
+  // GIVEN we create a RclcppParameterInterface using the node
+  RclcppParameterInterface parameter_interface{node_};
+
+  // WHEN we call the functions to get the config values from the parameter interface if the robot has an arm
+  // THEN the returned values match the values we used when declaring the parameters
+  const auto cameras_used_arm = parameter_interface.getCamerasUsed(true);
+  EXPECT_THAT(cameras_used_arm.has_value(), IsTrue());
+  EXPECT_THAT(cameras_used_arm.value(),
+              UnorderedElementsAre(SpotCamera::FRONTLEFT, SpotCamera::FRONTRIGHT, SpotCamera::HAND));
+
+  // WHEN we call the functions to get the config values from the parameter interface if the robot does not have an arm
+  // THEN this is an invalid choice of parameters.
+  const auto cameras_used_no_arm = parameter_interface.getCamerasUsed(false);
+  EXPECT_THAT(cameras_used_no_arm.has_value(), IsFalse());
+  EXPECT_THAT(cameras_used_no_arm.error(), StrEq("Cannot add SpotCamera 'hand', the robot does not have an arm!"));
+}
+
+TEST_F(RclcppParameterInterfaceEnvVarTest, GetCamerasUsedWithInvalidCamera) {
+  // GIVEN we set cameras used to a subset of the available cameras, with an invalid camera
+  const std::vector<std::string> cameras_used_parameter = {"frontleft", "frontright", "not_a_camera"};
+  node_->declare_parameter("cameras_used", cameras_used_parameter);
+
+  // GIVEN we create a RclcppParameterInterface using the node
+  RclcppParameterInterface parameter_interface{node_};
+
+  // WHEN we call the functions to get the config values from the parameter interface
+  // THEN the result is invalid for robots with and without arms, as the camera "not_a_camera" does not exist on Spot.
+  const auto cameras_used_arm = parameter_interface.getCamerasUsed(true);
+  EXPECT_THAT(cameras_used_arm.has_value(), IsFalse());
+  EXPECT_THAT(cameras_used_arm.error(), StrEq("Cannot convert camera 'not_a_camera' to a SpotCamera."));
+  const auto cameras_used_no_arm = parameter_interface.getCamerasUsed(false);
+  EXPECT_THAT(cameras_used_no_arm.has_value(), IsFalse());
+  EXPECT_THAT(cameras_used_no_arm.error(), StrEq("Cannot convert camera 'not_a_camera' to a SpotCamera."));
 }
 }  // namespace spot_ros2::test

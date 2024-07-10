@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <tl_expected/expected.hpp>
 #include <unordered_map>
+#include <vector>
 
 namespace {
 using ImageSource = spot_ros2::ImageSource;
@@ -98,33 +99,24 @@ tl::expected<ImageSource, std::string> fromSpotImageSourceName(const std::string
 }
 
 std::set<ImageSource> createImageSources(const bool get_rgb_images, const bool get_depth_images,
-                                         const bool get_depth_registered_images, const bool has_hand_camera) {
+                                         const bool get_depth_registered_images,
+                                         const std::set<SpotCamera>& spot_cameras_used) {
   std::set<ImageSource> sources;
   if (get_rgb_images) {
-    for (const auto& camera : kAllSpotBodyCameras) {
+    for (const auto& camera : spot_cameras_used) {
       sources.insert(ImageSource{camera, SpotImageType::RGB});
-    }
-    if (has_hand_camera) {
-      sources.insert(ImageSource{SpotCamera::HAND, SpotImageType::RGB});
     }
   }
   if (get_depth_images) {
-    for (const auto& camera : kAllSpotBodyCameras) {
+    for (const auto& camera : spot_cameras_used) {
       sources.insert(ImageSource{camera, SpotImageType::DEPTH});
-    }
-    if (has_hand_camera) {
-      sources.insert(ImageSource{SpotCamera::HAND, SpotImageType::DEPTH});
     }
   }
   if (get_depth_registered_images) {
-    for (const auto& camera : kAllSpotBodyCameras) {
+    for (const auto& camera : spot_cameras_used) {
       sources.insert(ImageSource{camera, SpotImageType::DEPTH_REGISTERED});
     }
-    if (has_hand_camera) {
-      sources.insert(ImageSource{SpotCamera::HAND, SpotImageType::DEPTH_REGISTERED});
-    }
   }
-
   return sources;
 }
 }  // namespace spot_ros2

@@ -3,6 +3,7 @@
 #include <spot_driver/interfaces/rclcpp_parameter_interface.hpp>
 
 #include <cstdlib>
+#include <vector>
 
 namespace {
 constexpr auto kEnvVarNameHostname = "SPOT_IP";
@@ -13,6 +14,7 @@ constexpr auto kEnvVarNamePassword = "BOSDYN_CLIENT_PASSWORD";
 
 constexpr auto kParameterNameHostname = "hostname";
 constexpr auto kParameterNamePort = "port";
+constexpr auto kParameterNameCamerasUsed = "cameras_used";
 constexpr auto kParameterNameCertificate = "certificate";
 constexpr auto kParameterNameUsername = "username";
 constexpr auto kParameterNamePassword = "password";
@@ -182,6 +184,37 @@ bool RclcppParameterInterface::getPublishDepthRegisteredImages() const {
 
 std::string RclcppParameterInterface::getPreferredOdomFrame() const {
   return declareAndGetParameter<std::string>(node_, kParameterPreferredOdomFrame, kDefaultPreferredOdomFrame);
+}
+
+std::set<spot_ros2::SpotCamera> RclcppParameterInterface::getDefaultCamerasUsed(const bool has_arm) const {
+  const auto kDefaultCamerasUsed = has_arm ? kDefaultCamerasUsedWithArm : kDefaultCamerasUsedWithoutArm;
+  std::set<spot_ros2::SpotCamera> spot_cameras_used;
+  for (const auto& camera : kDefaultCamerasUsed) {
+    spot_cameras_used.insert(kRosStringToSpotCamera.at(std::string(camera)));
+  }
+  return spot_cameras_used;
+}
+
+tl::expected<std::set<spot_ros2::SpotCamera>, std::string> RclcppParameterInterface::getCamerasUsed(
+    const bool has_arm) const {
+  const auto kDefaultCamerasUsed = has_arm ? kDefaultCamerasUsedWithArm : kDefaultCamerasUsedWithoutArm;
+  const std::vector<std::string> kDefaultCamerasUsedVector(std::begin(kDefaultCamerasUsed),
+                                                           std::end(kDefaultCamerasUsed));
+  const auto cameras_used_param =
+      declareAndGetParameter<std::vector<std::string>>(node_, kParameterNameCamerasUsed, kDefaultCamerasUsedVector);
+  std::set<spot_ros2::SpotCamera> spot_cameras_used;
+  for (const auto& camera : cameras_used_param) {
+    try {
+      const auto spot_camera = kRosStringToSpotCamera.at(camera);
+      if ((spot_camera == SpotCamera::HAND) && (!has_arm)) {
+        return tl::make_unexpected("Cannot add SpotCamera 'hand', the robot does not have an arm!");
+      }
+      spot_cameras_used.insert(spot_camera);
+    } catch (const std::out_of_range& e) {
+      return tl::make_unexpected("Cannot convert camera '" + camera + "' to a SpotCamera.");
+    }
+  }
+  return spot_cameras_used;
 }
 
 std::string RclcppParameterInterface::getSpotName() const {

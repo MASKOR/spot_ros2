@@ -27,6 +27,9 @@
     rgb_cameras: True  # Set to False if your robot has greyscale cameras -- otherwise you won't receive data.
     initialize_spot_cam: False # Set to True if you are connecting to a SpotCam payload module.
 
+    # You can uncomment and edit the list below if you only want to publish data from a certain set of cameras.
+    # cameras_used: ["frontleft", "frontright", "left", "right", "back", "hand"]
+
     # The following parameters are used in the image stitcher node and were determined through a lot of manual tuning.
     # They can be adjusted if the stitched image looks incorrect on your robot.
 

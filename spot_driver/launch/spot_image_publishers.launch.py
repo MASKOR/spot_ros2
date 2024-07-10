@@ -11,7 +11,7 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 
-from spot_driver.launch.spot_launch_helpers import spot_has_arm
+from spot_driver.launch.spot_launch_helpers import get_camera_sources, spot_has_arm
 
 
 class DepthRegisteredMode(Enum):
@@ -23,24 +23,17 @@ class DepthRegisteredMode(Enum):
         return self.value
 
 
-def get_camera_sources(has_arm: bool) -> List[str]:
-    camera_sources = ["frontleft", "frontright", "left", "right", "back"]
-    if has_arm:
-        camera_sources.append("hand")
-    return camera_sources
-
-
 def create_depth_registration_nodelets(
     context: launch.LaunchContext,
     spot_name: LaunchConfiguration,
-    has_arm: bool,
+    camera_sources: List[str],
 ) -> List[launch_ros.descriptions.ComposableNode]:
     """Create the list of depth_image_proc::RegisterNode composable nodes required to generate registered depth images
     for Spot's cameras."""
 
     composable_node_descriptions = []
 
-    for camera in get_camera_sources(has_arm):
+    for camera in camera_sources:
         composable_node_descriptions.append(
             launch_ros.descriptions.ComposableNode(
                 package="depth_image_proc",
@@ -71,14 +64,14 @@ def create_depth_registration_nodelets(
 def create_point_cloud_nodelets(
     context: launch.LaunchContext,
     spot_name: LaunchConfiguration,
-    has_arm: bool,
+    camera_sources: List[str],
 ) -> List[launch_ros.descriptions.ComposableNode]:
     """Create the list of depth_image_proc::PointCloudXyzrgbNode composable nodes required to generate point clouds for
     each pair of RGB and registered depth cameras."""
 
     composable_node_descriptions = []
 
-    for camera in get_camera_sources(has_arm):
+    for camera in camera_sources:
         composable_node_descriptions.append(
             launch_ros.descriptions.ComposableNode(
                 package="depth_image_proc",
@@ -120,6 +113,8 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     else:
         has_arm = spot_has_arm(config_file_path=config_file.perform(context), spot_name=spot_name)
 
+    camera_sources = get_camera_sources(config_file_path, has_arm)
+
     depth_registered_mode_string = depth_registered_mode_config.perform(context).lower()
     depth_registered_mode = DepthRegisteredMode(depth_registered_mode_string)
 
@@ -152,10 +147,10 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     # Parse config options to create a list of composable node descriptions for the nodelets we want to run within the
     # composable node container.
     composable_node_descriptions = (
-        create_depth_registration_nodelets(context, spot_name, has_arm)
+        create_depth_registration_nodelets(context, spot_name, camera_sources)
         if depth_registered_mode is DepthRegisteredMode.FROM_NODELETS
         else []
-    ) + (create_point_cloud_nodelets(context, spot_name, has_arm) if publish_point_clouds else [])
+    ) + (create_point_cloud_nodelets(context, spot_name, camera_sources) if publish_point_clouds else [])
     container = launch_ros.actions.ComposableNodeContainer(
         name="container",
         namespace=spot_name,
@@ -166,28 +161,29 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     )
     ld.add_action(container)
 
-    # add the image stitcher node
-    stitcher_params = {
-        "body_frame": f"{spot_name}/body" if spot_name else "body",
-        "virtual_camera_frame": f"{spot_name}/virtual_camera" if spot_name else "virtual_camera",
-    }
-    stitcher_prefix = f"/{spot_name}" if spot_name else ""
-    image_stitcher_node = launch_ros.actions.Node(
-        package="spot_driver",
-        executable="image_stitcher_node",
-        namespace=spot_name,
-        output="screen",
-        remappings=[
-            (f"{stitcher_prefix}/left/image", f"{stitcher_prefix}/camera/frontleft/image"),
-            (f"{stitcher_prefix}/left/camera_info", f"{stitcher_prefix}/camera/frontleft/camera_info"),
-            (f"{stitcher_prefix}/right/image", f"{stitcher_prefix}/camera/frontright/image"),
-            (f"{stitcher_prefix}/right/camera_info", f"{stitcher_prefix}/camera/frontright/camera_info"),
-            (f"{stitcher_prefix}/virtual_camera/image", f"{stitcher_prefix}/camera/frontmiddle_virtual/image"),
-        ],
-        parameters=[config_file, stitcher_params],
-        condition=IfCondition(LaunchConfiguration("stitch_front_images")),
-    )
-    ld.add_action(image_stitcher_node)
+    # add the image stitcher node, but only if frontleft and frontright cameras are enabled.
+    if "frontleft" in camera_sources and "frontright" in camera_sources:
+        stitcher_params = {
+            "body_frame": f"{spot_name}/body" if spot_name else "body",
+            "virtual_camera_frame": f"{spot_name}/virtual_camera" if spot_name else "virtual_camera",
+        }
+        stitcher_prefix = f"/{spot_name}" if spot_name else ""
+        image_stitcher_node = launch_ros.actions.Node(
+            package="spot_driver",
+            executable="image_stitcher_node",
+            namespace=spot_name,
+            output="screen",
+            remappings=[
+                (f"{stitcher_prefix}/left/image", f"{stitcher_prefix}/camera/frontleft/image"),
+                (f"{stitcher_prefix}/left/camera_info", f"{stitcher_prefix}/camera/frontleft/camera_info"),
+                (f"{stitcher_prefix}/right/image", f"{stitcher_prefix}/camera/frontright/image"),
+                (f"{stitcher_prefix}/right/camera_info", f"{stitcher_prefix}/camera/frontright/camera_info"),
+                (f"{stitcher_prefix}/virtual_camera/image", f"{stitcher_prefix}/camera/frontmiddle_virtual/image"),
+            ],
+            parameters=[config_file, stitcher_params],
+            condition=IfCondition(LaunchConfiguration("stitch_front_images")),
+        )
+        ld.add_action(image_stitcher_node)
 
 
 def generate_launch_description() -> launch.LaunchDescription:

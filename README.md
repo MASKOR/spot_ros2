@@ -91,7 +91,7 @@ See [`spot_examples`](spot_examples/) for some more complex examples of using th
 ## Images
 Perception data from Spot is handled through the `spot_image_publishers.launch.py` launchfile, which is launched by default from the driver. If you want to only view images from Spot, without bringing up any of the nodes to control the robot, you can also choose to run this launchfile independently.
 
-By default, the driver will publish RGB images as well as depth maps from the `frontleft`, `frontright`, `left`, `right`, and `back` cameras on Spot (plus `hand` if your Spot has an arm). If your Spot has greyscale cameras, you will need to set `rgb_cameras: False` in your configuration YAML file, or you will not recieve any image data. 
+By default, the driver will publish RGB images as well as depth maps from the `frontleft`, `frontright`, `left`, `right`, and `back` cameras on Spot (plus `hand` if your Spot has an arm). You can customize the cameras that are streamed from by adding the `cameras_used` parameter to your config yaml. (For example, to stream from only the front left and front right cameras, you can add `cameras_used: ["frontleft", "frontright"]`). Additionally, if your Spot has greyscale cameras, you will need to set `rgb_cameras: False` in your configuration YAML file, or you will not receive any image data.
 
 By default, the driver does not publish point clouds. To enable this, launch the driver with `publish_point_clouds:=True`.
 

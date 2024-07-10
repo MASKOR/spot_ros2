@@ -405,7 +405,14 @@ class SpotROS(Node):
             if self.initialize_spot_cam:
                 try:
                     self.cam_logger = rcutils_logger.RcutilsLogger(name=f"{name_with_dot}spot_cam_wrapper")
-                    self.spot_cam_wrapper = SpotCamWrapper(self.ip, self.username, self.password, self.cam_logger)
+                    self.spot_cam_wrapper = SpotCamWrapper(
+                        hostname=self.ip,
+                        username=self.username,
+                        password=self.password,
+                        port=self.port,
+                        logger=self.cam_logger,
+                        cert_resource_glob=self.certificate,
+                    )
                 except SystemError:
                     self.spot_cam_wrapper = None
 
@@ -2724,6 +2731,7 @@ class SpotROS(Node):
         self.run_dance_feedback = False
         feedback_thread.join()
 
+        execute_dance_handle.succeed()
         result = ExecuteDance.Result()
         result.success = res
         result.message = msg
@@ -2913,8 +2921,9 @@ class SpotROS(Node):
     def destroy_node(self) -> None:
         self.get_logger().info("Shutting down ROS driver for Spot")
         if self.spot_wrapper is not None:
-            if self.spot_wrapper.check_is_powered_on():
-                self.spot_wrapper.sit()
+            if self.spot_wrapper.check_is_powered_on() and self.start_estop.value:
+                self.get_logger().info("Sitting down...")
+                self.spot_wrapper.sit_blocking()
             self.spot_wrapper.disconnect()
         super().destroy_node()
 

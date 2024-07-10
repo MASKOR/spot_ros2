@@ -90,9 +90,19 @@ bool SpotImagePublisher::initialize() {
   const auto uncompress_images = parameters_->getUncompressImages();
   const auto publish_compressed_images = parameters_->getPublishCompressedImages();
 
+  std::set<spot_ros2::SpotCamera> cameras_used;
+  const auto cameras_used_parameter = parameters_->getCamerasUsed(has_arm_);
+  if (cameras_used_parameter.has_value()) {
+    cameras_used = cameras_used_parameter.value();
+  } else {
+    logger_->logWarn("Invalid cameras_used parameter! Got error: " + cameras_used_parameter.error() +
+                     " Defaulting to publishing from all cameras.");
+    cameras_used = parameters_->getDefaultCamerasUsed(has_arm_);
+  }
+
   // Generate the set of image sources based on which cameras the user has requested that we publish
   const auto sources =
-      createImageSources(publish_rgb_images, publish_depth_images, publish_depth_registered_images, has_arm_);
+      createImageSources(publish_rgb_images, publish_depth_images, publish_depth_registered_images, cameras_used);
 
   // Generate the image request message to capture the data from the specified image sources
   image_request_message_ = createImageRequest(sources, has_rgb_cameras, rgb_image_quality, publish_raw_rgb_cameras);

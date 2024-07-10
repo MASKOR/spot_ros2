@@ -21,6 +21,8 @@
 
 #include <functional>
 #include <optional>
+#include <string>
+#include <unordered_map>
 
 namespace spot_ros2 {
 /** @brief Represents the six different cameras on Spot. */
@@ -31,6 +33,18 @@ enum class SpotCamera {
   LEFT,
   RIGHT,
   HAND,
+};
+
+/**
+ * @brief Map from each ROS camera topic name to SpotCamera value.
+ */
+static const std::unordered_map<std::string, spot_ros2::SpotCamera> kRosStringToSpotCamera{
+    {"back", spot_ros2::SpotCamera::BACK},
+    {"frontleft", spot_ros2::SpotCamera::FRONTLEFT},
+    {"frontright", spot_ros2::SpotCamera::FRONTRIGHT},
+    {"hand", spot_ros2::SpotCamera::HAND},
+    {"left", spot_ros2::SpotCamera::LEFT},
+    {"right", spot_ros2::SpotCamera::RIGHT},
 };
 
 /** @brief Represents the three types of images Spot can capture. */
