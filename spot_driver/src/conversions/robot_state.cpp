@@ -163,22 +163,28 @@ std::optional<tf2_msgs::msg::TFMessage> getTf(const ::bosdyn::api::FrameTreeSnap
   return tf_msg;
 }
 
-std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(
-    const ::bosdyn::api::RobotState& robot_state, const google::protobuf::Duration& clock_skew) {
-  if (!robot_state.has_kinematic_state() || !robot_state.kinematic_state().has_velocity_of_body_in_odom() ||
-      !robot_state.kinematic_state().has_transforms_snapshot()) {
+std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(const ::bosdyn::api::RobotState& robot_state,
+                                                                           const google::protobuf::Duration& clock_skew,
+                                                                           const bool is_using_vision) {
+  if (!robot_state.has_kinematic_state() || !robot_state.kinematic_state().has_transforms_snapshot()) {
+    return std::nullopt;
+  }
+  const auto& kinematic_state = robot_state.kinematic_state();
+  if (is_using_vision && !kinematic_state.has_velocity_of_body_in_vision()) {
+    return std::nullopt;
+  } else if (!is_using_vision && !kinematic_state.has_velocity_of_body_in_odom()) {
     return std::nullopt;
   }
   geometry_msgs::msg::TwistWithCovarianceStamped odom_twist_msg;
-  const auto& kinematic_state = robot_state.kinematic_state();
-  const bosdyn::api::SE3Velocity& velocity_of_body_in_odom = kinematic_state.velocity_of_body_in_odom();
+  const bosdyn::api::SE3Velocity& velocity_of_body_in_world =
+      is_using_vision ? kinematic_state.velocity_of_body_in_vision() : kinematic_state.velocity_of_body_in_odom();
   // This now needs to be converted to velocity of body in body frame in order to follow ROS conventions.
   ::bosdyn::api::SE3Velocity velocity_of_body_in_body;
-  const std::string odom_frame_name = "odom";
+  const std::string world_frame_name = is_using_vision ? "vision" : "odom";
   const std::string body_frame_name = "body";
   const bool success =
-      ::bosdyn::api::ExpressVelocityInNewFrame(kinematic_state.transforms_snapshot(), odom_frame_name, body_frame_name,
-                                               velocity_of_body_in_odom, &velocity_of_body_in_body);
+      ::bosdyn::api::ExpressVelocityInNewFrame(kinematic_state.transforms_snapshot(), world_frame_name, body_frame_name,
+                                               velocity_of_body_in_world, &velocity_of_body_in_body);
   if (!success) {
     return std::nullopt;
   }
@@ -192,12 +198,11 @@ std::optional<nav_msgs::msg::Odometry> getOdom(const ::bosdyn::api::RobotState& 
                                                const google::protobuf::Duration& clock_skew, const std::string& prefix,
                                                bool is_using_vision) {
   if (!robot_state.has_kinematic_state() || !robot_state.kinematic_state().has_acquisition_timestamp() ||
-      !robot_state.kinematic_state().has_transforms_snapshot() ||
-      !robot_state.kinematic_state().has_velocity_of_body_in_odom()) {
+      !robot_state.kinematic_state().has_transforms_snapshot()) {
     return std::nullopt;
   }
 
-  const auto odom_twist = getOdomTwist(robot_state, clock_skew);
+  const auto odom_twist = getOdomTwist(robot_state, clock_skew, is_using_vision);
   if (!odom_twist) {
     return std::nullopt;
   }

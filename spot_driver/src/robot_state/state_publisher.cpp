@@ -68,7 +68,7 @@ void StatePublisher::timerCallback() {
                          getEstopStates(robot_state, clock_skew),
                          getJointStates(robot_state, clock_skew, frame_prefix_),
                          getTf(robot_state, clock_skew, frame_prefix_, full_odom_frame_id_),
-                         getOdomTwist(robot_state, clock_skew),
+                         getOdomTwist(robot_state, clock_skew, is_using_vision_),
                          getOdom(robot_state, clock_skew, frame_prefix_, is_using_vision_),
                          getPowerState(robot_state, clock_skew),
                          getSystemFaultState(robot_state, clock_skew),

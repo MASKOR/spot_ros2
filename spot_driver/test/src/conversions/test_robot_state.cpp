@@ -357,7 +357,8 @@ TEST(RobotStateConversions, TestGetOdomTwistNoTransformsSnapshot) {
   clock_skew.set_seconds(1);
 
   // WHEN we create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN this fails as there is no TransformsSnapshot
   ASSERT_THAT(out.has_value(), IsFalse());
@@ -391,7 +392,8 @@ TEST(RobotStateConversions, TestGetOdomTwistBodyAtOdom) {
   clock_skew.set_seconds(1);
 
   // WHEN we create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN this succeeds
   ASSERT_THAT(out.has_value(), IsTrue());
@@ -425,7 +427,8 @@ TEST(RobotStateConversions, TestGetOdomTwistLinearTransformationLinearVelocity) 
   clock_skew.set_seconds(1);
 
   // WHEN we create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN this succeeds
   ASSERT_THAT(out.has_value(), IsTrue());
@@ -459,7 +462,8 @@ TEST(RobotStateConversions, TestGetOdomTwistAngularTransformationLinearVelocity)
   clock_skew.set_seconds(1);
 
   // WHEN we create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN this succeeds
   ASSERT_THAT(out.has_value(), IsTrue());
@@ -479,7 +483,8 @@ TEST(RobotStateConversions, TestGetOdomTwistNoBodyVelocityInRobotState) {
   clock_skew.set_seconds(1);
 
   // WHEN we attempt to create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN no message is output
   ASSERT_THAT(out.has_value(), IsFalse());

@@ -131,11 +131,14 @@ std::optional<tf2_msgs::msg::TFMessage> getTf(const ::bosdyn::api::FrameTreeSnap
  *
  * @param robot_state Robot state message from Spot.
  * @param clock_skew The clock skew reported by Spot at the timepoint when the robot state was created.
+ * @param is_using_vision Set to 'true' if Spot's preferred base frame is "vision". Otherwise, the preferred base frame
+ * will be "odom".
  * @return If the robot state message contains the velocity of the Spot's body relative to the odometry frame in its
  * kinematic state, return a TwistWithCovarianceStamped containing this data. Otherwise, return nullopt.
  */
-std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(
-    const ::bosdyn::api::RobotState& robot_state, const google::protobuf::Duration& clock_skew);
+std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> getOdomTwist(const ::bosdyn::api::RobotState& robot_state,
+                                                                           const google::protobuf::Duration& clock_skew,
+                                                                           const bool is_using_vision);
 
 /**
  * @brief Create an Odometry ROS message representing Spot's pose and velocity relative to a fixed world frame by
