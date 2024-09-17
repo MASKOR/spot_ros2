@@ -210,10 +210,14 @@ RclcppCameraHandle::RclcppCameraHandle(const std::shared_ptr<rclcpp::Node>& node
       camera_publisher_{
           image_transport_.advertiseCamera("virtual_camera/image", 1)},  // Remap to actual topic in launch file
       tf_broadcaster_{node} {
+  const auto spot_name = node->declare_parameter("spot_name", "");
+  const auto frame_prefix = spot_name.empty() ? "" : spot_name + "/";
   // Name of the frame to relate the virtual camera with respect to
-  body_frame_ = node->declare_parameter("body_frame", "robot/body");
+  const auto body_frame_param = node->declare_parameter("body_frame", "body");
+  body_frame_ = frame_prefix + body_frame_param;
   // Name of the virtual camera frame to publish
-  camera_frame_ = node->declare_parameter("virtual_camera_frame", "robot/virtual_camera");
+  const auto camera_frame_param = node->declare_parameter("virtual_camera_frame", "virtual_camera");
+  camera_frame_ = frame_prefix + camera_frame_param;
   // Get the virtual camera intrinsics, which could fail if the wrong number of parameters are specified in the yaml
   try {
     intrinsics_ = toCvMatx33d(
@@ -419,12 +423,15 @@ void ImageStitcher::callback(const std::shared_ptr<const Image>& image_left,
     // Virtual camera transform only has to be broadcast once since it is static wrt the body
     camera_handle_->broadcast(camera_->getTransform(), info_left->header.stamp);
   }
+  const auto& current_stamp = info_left->header.stamp;
+  const auto& camera_frame = camera_handle_->getCameraFrame();
   // The rest of the time we should just be stitching and publishing
   const auto image_stitched = camera_->stitch(image_left, image_right);
+  image_stitched->header.stamp = current_stamp;
+  image_stitched->header.frame_id = camera_frame;
   // The only reason we have to remake this every time is to update the time stamp
-  const auto info_stitched =
-      toCameraInfo(info_left->header.stamp, camera_handle_->getCameraFrame(), image_stitched->width,
-                   image_stitched->height, camera_handle_->getIntrinsics());
+  const auto info_stitched = toCameraInfo(current_stamp, camera_frame, image_stitched->width, image_stitched->height,
+                                          camera_handle_->getIntrinsics());
   camera_handle_->publish(*image_stitched, info_stitched);
 }
 

@@ -16,7 +16,10 @@ def generate_launch_description() -> launch.LaunchDescription:
     return launch.LaunchDescription(
         [
             DeclareLaunchArgument(
-                name="gui", default_value="True", description="Flag to enable joint_state_publisher_gui"
+                name="gui",
+                default_value="True",
+                choices=["True", "true", "False", "false"],
+                description="Flag to enable joint_state_publisher_gui",
             ),
             DeclareLaunchArgument(
                 name="model", default_value=default_model_path, description="Absolute path to robot urdf file"
@@ -24,7 +27,18 @@ def generate_launch_description() -> launch.LaunchDescription:
             DeclareLaunchArgument(
                 name="rvizconfig", default_value=default_rviz2_path, description="Absolute path to rviz config file"
             ),
-            DeclareLaunchArgument(name="arm", default_value="False", description="Flag to enable arm"),
+            DeclareLaunchArgument(
+                name="arm",
+                default_value="False",
+                choices=["True", "true", "False", "false"],
+                description="Flag to enable arm",
+            ),
+            DeclareLaunchArgument(
+                name="feet",
+                default_value="False",
+                choices=["True", "true", "False", "false"],
+                description="Flag to enable putting frames at the feet",
+            ),
             DeclareLaunchArgument(
                 "tf_prefix", default_value='""', description="Apply namespace prefix to robot links and joints"
             ),
@@ -40,6 +54,8 @@ def generate_launch_description() -> launch.LaunchDescription:
                                 LaunchConfiguration("model"),
                                 " arm:=",
                                 LaunchConfiguration("arm"),
+                                " feet:=",
+                                LaunchConfiguration("feet"),
                                 " tf_prefix:=",
                                 LaunchConfiguration("tf_prefix"),
                             ]

@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<robot name="spot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:arg name="has_arm" default="false" />
+    <xacro:arg name="add_ros2_control_tag" default="true" />
+    <xacro:arg name="hardware_interface_type" default="mock" />
+    <xacro:arg name="tf_prefix" default="" />
+    <xacro:arg name="hostname" default="10.0.0.3" />
+    <xacro:arg name="username" default="username" />
+    <xacro:arg name="password" default="password" />
+
+    <!-- Macro containing the URDF for Spot -->
+    <xacro:include filename="$(find spot_description)/urdf/spot_macro.xacro" />
+    <!-- Macros for loading the ROS 2 control tags -->
+    <xacro:include filename="$(find spot_ros2_control)/xacro/spot_interfaces.ros2_control.xacro" />
+    <xacro:include filename="$(find spot_ros2_control)/xacro/spot.ros2_control.xacro" />
+
+    <!-- Adding Spot-->
+    <xacro:load_spot arm="$(arg has_arm)" tf_prefix="$(arg tf_prefix)"/>
+    <!-- Adding the ROS 2 control tags -->
+    <xacro:if value="$(arg add_ros2_control_tag)">
+        <xacro:spot_ros2_control interface_type="$(arg hardware_interface_type)" 
+                                 has_arm="$(arg has_arm)" 
+                                 hostname="$(arg hostname)" 
+                                 username="$(arg username)" 
+                                 password="$(arg password)" 
+                                 tf_prefix="$(arg tf_prefix)" />
+    </xacro:if>
+
+</robot>

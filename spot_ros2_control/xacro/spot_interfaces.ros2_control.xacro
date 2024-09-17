@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="ros2_control_joint"
+        params="joint_name position_min:=0.0 position_max:=0.0 velocity_max effort_max">
+        <joint name="${joint_name}">
+            <state_interface name="position" />
+            <state_interface name="velocity" />
+            <state_interface name="effort" />
+
+            <command_interface name="position">
+                <param name="min">${position_min}</param>
+                <param name="max">${position_max}</param>
+            </command_interface>
+            <command_interface name="velocity">
+                <param name="min">${-velocity_max}</param>
+                <param name="max">${velocity_max}</param>
+            </command_interface>
+            <command_interface name="effort">
+                <param name="min">${-effort_max}</param>
+                <param name="max">${effort_max}</param>
+            </command_interface>
+            <!-- TODO at some point, this should be a part of the command interface so we can have a 
+            one-to-one mapping to the spot sdk implementation. -->
+            <!-- <command_interface name="k_q_p" />
+            <command_interface name="k_qd_p" /> -->
+        </joint>
+    </xacro:macro>
+
+    <!-- TODO We do not know the real velocity bounds for Spot. -->
+    <xacro:macro name="leg" params="left_or_right front_or_rear tf_prefix">
+        <xacro:ros2_control_joint joint_name="${tf_prefix}${front_or_rear}_${left_or_right}_hip_x"
+            position_min="-0.785" position_max="0.785" velocity_max="100" effort_max="45" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}${front_or_rear}_${left_or_right}_hip_y"
+            position_min="-0.899" position_max="2.295" velocity_max="100" effort_max="45" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}${front_or_rear}_${left_or_right}_knee"
+            position_min="-2.793" position_max="-0.255" velocity_max="100" effort_max="115" />
+    </xacro:macro>
+
+    <xacro:macro name="arm" params="tf_prefix">
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_sh0"
+            position_min="-2.168" position_max="3.142" velocity_max="100" effort_max="90.9" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_sh1"
+            position_min="-3.142" position_max="0.524" velocity_max="100" effort_max="181.8" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_el0"
+            position_min="0.000" position_max="3.142" velocity_max="100" effort_max="90.9" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_el1"
+            position_min="-2.793" position_max="2.793" velocity_max="100" effort_max="30.3" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_wr0"
+            position_min="-1.833" position_max="1.833" velocity_max="100" effort_max="30.3" />
+
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_wr1"
+            position_min="-2.880" position_max="2.880" velocity_max="100" effort_max="30.3" />
+
+        <!-- This is the gripper joint. This could be its own interface to support robots
+        with custom grippers, but would involve modifying the URDFs in spot_description. -->
+        <xacro:ros2_control_joint joint_name="${tf_prefix}arm_f1x"
+            position_min="-1.570" position_max="0.000" velocity_max="100" effort_max="15.3" />
+
+    </xacro:macro>
+
+</robot>

@@ -22,10 +22,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
     python3-rosdep \
     libpython3-dev \
     python3-vcstool \
-    ros-humble-tl-expected && \
+    ros-${ROS_DISTRO}-ros2-control \
+    ros-${ROS_DISTRO}-ros2-controllers \
+    ros-${ROS_DISTRO}-tl-expected && \
     rm -rf /var/lib/apt/lists/*
 
-# I added this
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash"
 
 # Install bosdyn_msgs package

@@ -42,3 +42,6 @@
     virtual_camera_plane_distance: 0.5
     # The stitched image will be of size (<frontleft image width>, <frontleft image height> + row_padding)
     stitched_image_row_padding: 1182
+
+    # Change to True if missing gripper on arm
+    gripperless: False

@@ -41,7 +41,7 @@
       <axis xyz="0 0 1" />
       <parent link="${tf_prefix}body" />
       <child link="${tf_prefix}arm_link_sh0" />
-      <limit effort="1000" velocity="1000.00" lower="-2.61799387799149441136"
+      <limit effort="90.9" velocity="10.0" lower="-2.61799387799149441136"
         upper="3.14159265358979311599" />
     </joint>
 
@@ -68,9 +68,7 @@
       <axis xyz="0 1 0" />
       <parent link="${tf_prefix}arm_link_sh0" />
       <child link="${tf_prefix}arm_link_sh1" />
-      <!-- <limit effort="1000" velocity="1000.00" lower="-0.52359877559829881565"
-      upper="3.14159265358979311599"/> -->
-      <limit effort="1000" velocity="1000.00" lower="-3.14159265358979311599"
+      <limit effort="181.8" velocity="10.0" lower="-3.14159265358979311599"
         upper="0.52359877559829881565" />
     </joint>
 
@@ -99,10 +97,8 @@
     </link>
     <joint name="${tf_prefix}arm_hr0" type="fixed">
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
-      <axis xyz="1 0 0" />
       <parent link="${tf_prefix}arm_link_sh1" />
       <child link="${tf_prefix}arm_link_hr0" />
-      <limit effort="1000" velocity="1000.00" lower="-1e6" upper="1e6" />
     </joint>
 
     <link name="${tf_prefix}arm_link_el0">
@@ -133,7 +129,7 @@
       <axis xyz="0 1 0" />
       <parent link="${tf_prefix}arm_link_hr0" />
       <child link="${tf_prefix}arm_link_el0" />
-      <limit effort="1000" velocity="1000.00" lower="0" upper="3.14159265358979311599" />
+      <limit effort="90.9" velocity="10.0" lower="0" upper="3.14159265358979311599" />
     </joint>
 
     <link name="${tf_prefix}arm_link_el1">
@@ -169,7 +165,7 @@
       <axis xyz="1 0 0" />
       <parent link="${tf_prefix}arm_link_el0" />
       <child link="${tf_prefix}arm_link_el1" />
-      <limit effort="1000" velocity="1000.00" lower="-2.79252680319092716487"
+      <limit effort="30.3" velocity="10.0" lower="-2.79252680319092716487"
         upper="2.79252680319092716487" />
     </joint>
 
@@ -201,7 +197,7 @@
       <axis xyz="0 1 0" />
       <parent link="${tf_prefix}arm_link_el1" />
       <child link="${tf_prefix}arm_link_wr0" />
-      <limit effort="1000" velocity="1000.00" lower="-1.83259571459404613236"
+      <limit effort="30.3" velocity="10.0" lower="-1.83259571459404613236"
         upper="1.83259571459404613236" />
     </joint>
 
@@ -248,7 +244,7 @@
       <axis xyz="1 0 0" />
       <parent link="${tf_prefix}arm_link_wr0" />
       <child link="${tf_prefix}arm_link_wr1" />
-      <limit effort="1000" velocity="1000.00" lower="-2.87979326579064354163"
+      <limit effort="30.3" velocity="10.0" lower="-2.87979326579064354163"
         upper="2.87979326579064354163" />
     </joint>
 
@@ -305,7 +301,7 @@
       <axis xyz="0.0 1.0 0.0" />
       <parent link="${tf_prefix}arm_link_wr1" />
       <child link="${tf_prefix}arm_link_fngr" />
-      <limit effort="1000" velocity="1000.00" lower="-1.57" upper="0.0" />
+      <limit effort="15.32" velocity="10.0" lower="-1.57" upper="0.0" />
     </joint>
   </xacro:macro>
 </robot>

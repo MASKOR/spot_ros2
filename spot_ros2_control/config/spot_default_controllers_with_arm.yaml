@@ -1,0 +1,37 @@
+# Some built in controllers, taken from
+# https://github.com/ros-controls/roscon2022_workshop/blob/master/controlko_bringup/config/rrbot_controllers.yaml
+
+controller_manager:
+  ros__parameters:
+    update_rate: 333  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    forward_position_controller:
+      type: forward_command_controller/ForwardCommandController
+
+
+forward_position_controller:
+  ros__parameters:
+    joints:
+      - front_left_hip_x
+      - front_left_hip_y
+      - front_left_knee
+      - front_right_hip_x
+      - front_right_hip_y
+      - front_right_knee
+      - rear_left_hip_x
+      - rear_left_hip_y
+      - rear_left_knee
+      - rear_right_hip_x
+      - rear_right_hip_y
+      - rear_right_knee
+      - arm_sh0
+      - arm_sh1
+      - arm_el0
+      - arm_el1
+      - arm_wr0
+      - arm_wr1
+      - arm_f1x
+    interface_name: position

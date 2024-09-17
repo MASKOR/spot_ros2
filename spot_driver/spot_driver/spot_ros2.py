@@ -43,12 +43,14 @@ from bosdyn_msgs.conversions import convert
 from bosdyn_msgs.msg import (
     ArmCommandFeedback,
     Camera,
+    FullBodyCommand,
     FullBodyCommandFeedback,
     GripperCommandFeedback,
     Logpoint,
     ManipulationApiFeedbackResponse,
     MobilityCommandFeedback,
     PtzDescription,
+    RobotCommand,
     RobotCommandFeedback,
     RobotCommandFeedbackStatusStatus,
 )
@@ -65,6 +67,7 @@ from rclpy.clock import Clock
 from rclpy.impl import rcutils_logger
 from rclpy.publisher import Publisher
 from rclpy.timer import Rate
+from sensor_msgs.msg import JointState
 from std_srvs.srv import SetBool, Trigger
 
 import spot_driver.robot_command_util as robot_command_util
@@ -248,6 +251,8 @@ class SpotROS(Node):
         self.declare_parameter("spot_name", "")
         self.declare_parameter("mock_enable", False)
 
+        self.declare_parameter("gripperless", False)
+
         # When we send very long trajectories to Spot, we create batches of
         # given size. If we do not batch a long trajectory, Spot will reject it.
         self.declare_parameter(self.TRAJECTORY_BATCH_SIZE_PARAM, 100)
@@ -286,6 +291,8 @@ class SpotROS(Node):
         self.publish_graph_nav_pose: Parameter = self.get_parameter("publish_graph_nav_pose")
         self.graph_nav_seed_frame: str = self.get_parameter("graph_nav_seed_frame").value
         self.initialize_spot_cam: bool = self.get_parameter("initialize_spot_cam").value
+
+        self.gripperless: bool = self.get_parameter("gripperless").value
 
         self._wait_for_goal: Optional[WaitForGoal] = None
         self.goal_handle: Optional[ServerGoalHandle] = None
@@ -424,14 +431,9 @@ class SpotROS(Node):
                 self.get_logger().error(error_msg)
                 raise ValueError(error_msg)
 
-        all_cameras = ["frontleft", "frontright", "left", "right", "back"]
         has_arm = self.mock_has_arm
         if self.spot_wrapper is not None:
             has_arm = self.spot_wrapper.has_arm()
-        if has_arm:
-            all_cameras.append("hand")
-        self.declare_parameter("cameras_used", all_cameras)
-        self.cameras_used = self.get_parameter("cameras_used")
 
         if self.publish_graph_nav_pose.value:
             # graph nav pose will be published both on a topic
@@ -456,6 +458,9 @@ class SpotROS(Node):
 
         self.create_subscription(Twist, "cmd_vel", self.cmd_velocity_callback, 1, callback_group=self.group)
         self.create_subscription(Pose, "body_pose", self.body_pose_callback, 1, callback_group=self.group)
+        self.create_subscription(
+            JointState, "arm_joint_commands", self.arm_joint_cmd_callback, 100, callback_group=self.group
+        )
         self.create_service(
             Trigger,
             "claim",
@@ -564,22 +569,23 @@ class SpotROS(Node):
                 callback_group=self.group,
             )
 
-            self.create_service(
-                Trigger,
-                "open_gripper",
-                lambda request, response: self.service_wrapper(
-                    "open_gripper", self.handle_open_gripper, request, response
-                ),
-                callback_group=self.group,
-            )
-            self.create_service(
-                Trigger,
-                "close_gripper",
-                lambda request, response: self.service_wrapper(
-                    "close_gripper", self.handle_close_gripper, request, response
-                ),
-                callback_group=self.group,
-            )
+            if not self.gripperless:
+                self.create_service(
+                    Trigger,
+                    "open_gripper",
+                    lambda request, response: self.service_wrapper(
+                        "open_gripper", self.handle_open_gripper, request, response
+                    ),
+                    callback_group=self.group,
+                )
+                self.create_service(
+                    Trigger,
+                    "close_gripper",
+                    lambda request, response: self.service_wrapper(
+                        "close_gripper", self.handle_close_gripper, request, response
+                    ),
+                    callback_group=self.group,
+                )
 
         self.create_service(
             SetBool,
@@ -861,7 +867,7 @@ class SpotROS(Node):
             self.handle_graph_nav_set_localization,
             callback_group=self.group,
         )
-        if has_arm:
+        if has_arm and not self.gripperless:
             self.create_service(
                 GetGripperCameraParameters,
                 "get_gripper_camera_parameters",
@@ -1843,8 +1849,7 @@ class SpotROS(Node):
     def handle_max_vel(self, request: SetVelocity.Request, response: SetVelocity.Response) -> SetVelocity.Response:
         """
         Handle a max_velocity service call. This will modify the mobility params to have a limit on the maximum
-        velocity that the robot can move during motion commands. This affects trajectory commands and velocity
-        commands
+        velocity that the robot can move during motion commands. This affects trajectory commands
         Args:
             response: SetVelocity.Response containing response
             request: SetVelocity.Request containing requested maximum velocity
@@ -1862,7 +1867,12 @@ class SpotROS(Node):
                         request.velocity_limit.linear.x,
                         request.velocity_limit.linear.y,
                         request.velocity_limit.angular.z,
-                    ).to_proto()
+                    ).to_proto(),
+                    min_vel=math_helpers.SE2Velocity(
+                        -request.velocity_limit.linear.x,
+                        -request.velocity_limit.linear.y,
+                        -request.velocity_limit.angular.z,
+                    ).to_proto(),
                 )
             )
             self.spot_wrapper.set_mobility_params(mobility_params)
@@ -1898,7 +1908,19 @@ class SpotROS(Node):
         # return None to continue processing the command feedback
         return None
 
-    def _process_full_body_command_feedback(self, feedback: FullBodyCommandFeedback) -> GoalResponse:
+    def _process_full_body_command_feedback(
+        self, command: FullBodyCommand, feedback: FullBodyCommandFeedback
+    ) -> GoalResponse:
+        # NOTE: Spot powers off on roll over to battery change pose. For Spot <=4.0.2 software,
+        # this can result in the battery change pose command being overriden before reporting
+        # any battery change pose feedback of success. The following clause is a best-effort
+        # attempt to deal gracefully with this.
+        if command.command.which == command.command.COMMAND_BATTERY_CHANGE_POSE_REQUEST_SET:
+            powered_off = not self.spot_wrapper or not self.spot_wrapper.check_is_powered_on()
+            command_overriden = feedback.status.value == RobotCommandFeedbackStatusStatus.STATUS_COMMAND_OVERRIDDEN
+            if command_overriden and powered_off:
+                return GoalResponse.SUCCESS
+
         maybe_goal_response = self._process_feedback_status(feedback.status.value)
         if maybe_goal_response is not None:
             return maybe_goal_response
@@ -2067,15 +2089,16 @@ class SpotROS(Node):
             return GoalResponse.IN_PROGRESS
         return GoalResponse.SUCCESS
 
-    def _robot_command_goal_complete(self, feedback: RobotCommandFeedback) -> GoalResponse:
+    def _robot_command_goal_complete(self, command: RobotCommand, feedback: RobotCommandFeedback) -> GoalResponse:
         if feedback is None:
             # NOTE: it takes an iteration for the feedback to get set.
             return GoalResponse.IN_PROGRESS
 
         choice = feedback.command.command_choice
         if choice == feedback.command.COMMAND_FULL_BODY_FEEDBACK_SET:
+            full_body_command = command.command.full_body_command
             full_body_feedback = feedback.command.full_body_feedback
-            return self._process_full_body_command_feedback(full_body_feedback)
+            return self._process_full_body_command_feedback(full_body_command, full_body_feedback)
 
         elif choice == feedback.command.COMMAND_SYNCHRONIZED_FEEDBACK_SET:
             # The idea here is that a synchronized command can have arm, mobility, and/or gripper
@@ -2186,7 +2209,7 @@ class SpotROS(Node):
             rclpy.ok()
             and goal_handle.is_active
             and not goal_handle.is_cancel_requested
-            and self._robot_command_goal_complete(feedback) == GoalResponse.IN_PROGRESS
+            and self._robot_command_goal_complete(ros_command, feedback) == GoalResponse.IN_PROGRESS
         ):
             # We keep looping and send batches at the expected times until the
             # last batch succeeds. We always send the next batch before the
@@ -2215,7 +2238,7 @@ class SpotROS(Node):
             goal_handle.publish_feedback(feedback_msg)
             result.result = feedback
 
-        result.success = self._robot_command_goal_complete(feedback) == GoalResponse.SUCCESS
+        result.success = self._robot_command_goal_complete(ros_command, feedback) == GoalResponse.SUCCESS
 
         if goal_handle.is_cancel_requested:
             result.success = False
@@ -2501,6 +2524,33 @@ class SpotROS(Node):
         mobility_params = self.spot_wrapper.get_mobility_params()
         mobility_params.body_control.CopyFrom(body_control)
         self.spot_wrapper.set_mobility_params(mobility_params)
+
+    def arm_joint_cmd_callback(self, data: JointState) -> None:
+        if not self.spot_wrapper:
+            self.get_logger().info(f"Mock mode, received arm joint commdn {data}")
+            return
+        arm_joint_map = {"sh0": None, "sh1": None, "el0": None, "el1": None, "wr0": None, "wr1": None}
+        # Check we have the right number of joints for the arm
+        if len(data.name) != len(arm_joint_map):
+            self.get_logger().warning(f"Expected {len(arm_joint_map)} joints, but received {len(data.name)}")
+            return
+
+        # Need to match the joint names in the JointState message to the joint names in the order we expect for spot.
+        # Depending on how the Spot is launched, the joint names could come in with a namespace or arm precusor such as
+        # `Spot/arm_sh0` or "arm_sh0" or simply just "sh0"
+        for name, position in zip(data.name, data.position):
+            for joint_name in arm_joint_map.keys():
+                if joint_name in name:
+                    arm_joint_map[joint_name] = position
+                    continue
+
+        # Check that all the arm joints were filled in
+        for name, joint in arm_joint_map.items():
+            if joint is None:
+                self.get_logger().warning(f"Expected a value for joint {name}, but did not receive one")
+                return
+
+        self.spot_wrapper.arm_joint_cmd(**arm_joint_map)
 
     def handle_graph_nav_get_localization_pose(
         self,

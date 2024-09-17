@@ -14,6 +14,8 @@ Pytest automatically discovers all fixtures defined in the file "conftest.py".
 # warning that we want disabled.
 # pylint: disable=redefined-outer-name
 
+import os
+import pathlib
 import tempfile
 import typing
 
@@ -39,6 +41,14 @@ import spot_wrapper.testing
 from spot_driver.spot_ros2 import SpotROS
 from spot_wrapper.testing.fixtures import SpotFixture
 from spot_wrapper.testing.mocks import MockSpot
+
+TEST_PATH = pathlib.Path(__file__).parent
+os.environ.update(
+    {
+        "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+        "FASTRTPS_DEFAULT_PROFILES_FILE": str(TEST_PATH.parent / "profile.xml"),
+    }
+)
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -136,6 +146,12 @@ def spot_graph_description(simple_spot: SpotFixture, domain_id: int) -> typing.I
         yield launch.LaunchDescription(
             [
                 launch.actions.SetEnvironmentVariable("ROS_DOMAIN_ID", str(domain_id)),
+                launch.actions.SetEnvironmentVariable(
+                    name="RMW_IMPLEMENTATION", value=os.environ["RMW_IMPLEMENTATION"]
+                ),
+                launch.actions.SetEnvironmentVariable(
+                    name="FASTRTPS_DEFAULT_PROFILES_FILE", value=os.environ["FASTRTPS_DEFAULT_PROFILES_FILE"]
+                ),
                 launch.actions.IncludeLaunchDescription(
                     launch.launch_description_sources.PythonLaunchDescriptionSource(
                         launch.substitutions.PathJoinSubstitution(

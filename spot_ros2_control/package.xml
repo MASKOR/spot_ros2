@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<!--
+Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.
+-->
+<package format="3">
+  <name>spot_ros2_control</name>
+  <version>0.0.0</version>
+  <description>Package for using ROS 2 control to use the low-level functionality of Spot.</description>
+  <maintainer email="engineering@theaiinstitute.com">AI Institute</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>controller_manager</exec_depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>spot_description</depend>
+  <depend>spot_driver</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

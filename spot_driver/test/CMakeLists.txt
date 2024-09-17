@@ -130,6 +130,8 @@ target_include_directories(test_kinematic_service
 )
 target_link_libraries(test_kinematic_service spot_api)
 
+ament_add_pytest_test(spot_driver_pytest ${CMAKE_CURRENT_SOURCE_DIR} TIMEOUT 900)
+
 # TODO(khughes): re-enable these tests once TF extrapolation issue fixed
 # ament_add_gmock(test_object_synchronization
 #     src/test_object_synchronization.cpp

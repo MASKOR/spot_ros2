@@ -5,7 +5,7 @@ import unittest
 
 import bdai_ros2_wrappers.scope as ros_scope
 import rclpy
-from bosdyn_msgs.msg import RobotCommandFeedback
+from bosdyn_msgs.msg import RobotCommand, RobotCommandFeedback
 from std_srvs.srv import Trigger
 
 import spot_driver.spot_ros2
@@ -80,18 +80,20 @@ class SpotDriverTest(unittest.TestCase):
     def test_robot_command_goal_complete(self) -> None:
         FEEDBACK_INVALID = -128
 
-        self.assertEqual(self.spot_ros2._robot_command_goal_complete(None), GoalResponse.IN_PROGRESS, "Empty Command")
+        dummy_command = RobotCommand()
+        self.assertEqual(
+            self.spot_ros2._robot_command_goal_complete(dummy_command, None), GoalResponse.IN_PROGRESS, "Empty Command"
+        )
 
         feedback = RobotCommandFeedback()
 
         """ Testing FullBodyFeedback """
-
         fullbody_feedback = feedback.command.full_body_feedback
         feedback.command.command_choice = feedback.command.COMMAND_FULL_BODY_FEEDBACK_SET
 
         feedback.command.full_body_feedback.status.value = fullbody_feedback.status.STATUS_UNKNOWN
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "COMMAND_FULL_BODY_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -103,7 +105,9 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.FEEDBACK_STOP_FEEDBACK_SET
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback), GoalResponse.SUCCESS, "FEEDBACK_STOP_FEEDBACK_SET"
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
+            GoalResponse.SUCCESS,
+            "FEEDBACK_STOP_FEEDBACK_SET",
         )
 
         """ Testing FREEZE_FEEDBACK_SET """
@@ -111,7 +115,9 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.FEEDBACK_FREEZE_FEEDBACK_SET
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback), GoalResponse.SUCCESS, "FEEDBACK_FREEZE_FEEDBACK_SET"
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
+            GoalResponse.SUCCESS,
+            "FEEDBACK_FREEZE_FEEDBACK_SET",
         )
 
         """ Testing SELFRIGHT_FEEDBACK_SET """
@@ -122,7 +128,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.selfright_feedback.status.STATUS_COMPLETED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_SELFRIGHT_FEEDBACK_SET | STATUS_COMPLETED",
         )
@@ -131,7 +137,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.selfright_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SELFRIGHT_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -140,7 +146,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.selfright_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SELFRIGHT_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -153,7 +159,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.safe_power_off_feedback.status.STATUS_POWERED_OFF
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_SAFE_POWER_OFF_FEEDBACK_SET | STATUS_POWERED_OFF",
         )
@@ -162,7 +168,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.safe_power_off_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SAFE_POWER_OFF_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -171,7 +177,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.safe_power_off_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SAFE_POWER_OFF_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -184,7 +190,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.battery_change_pose_feedback.status.STATUS_COMPLETED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_COMPLETED",
         )
@@ -193,7 +199,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.battery_change_pose_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -202,7 +208,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.battery_change_pose_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -211,7 +217,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.battery_change_pose_feedback.status.STATUS_FAILED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_FAILED",
         )
@@ -224,7 +230,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.payload_estimation_feedback.status.STATUS_COMPLETED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_PAYLOAD_ESTIMATION_FEEDBACK_SET | STATUS_COMPLETED",
         )
@@ -233,7 +239,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.payload_estimation_feedback.status.STATUS_SMALL_MASS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_PAYLOAD_ESTIMATION_FEEDBACK_SET | STATUS_SMALL_MASS",
         )
@@ -242,7 +248,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.payload_estimation_feedback.status.STATUS_ERROR
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_PAYLOAD_ESTIMATION_FEEDBACK_SET | STATUS_ERROR",
         )
@@ -251,7 +257,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.payload_estimation_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_PAYLOAD_ESTIMATION_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -260,7 +266,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.payload_estimation_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_PAYLOAD_ESTIMATION_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -273,7 +279,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.constrained_manipulation_feedback.status.STATUS_RUNNING
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_CONSTRAINED_MANIPULATION_FEEDBACK_SET | STATUS_RUNNING",
         )
@@ -282,7 +288,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.constrained_manipulation_feedback.status.STATUS_GRASP_IS_LOST
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_CONSTRAINED_MANIPULATION_FEEDBACK_SET | STATUS_GRASP_IS_LOST",
         )
@@ -291,7 +297,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.constrained_manipulation_feedback.status.STATUS_ARM_IS_STUCK
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_CONSTRAINED_MANIPULATION_FEEDBACK_SET | STATUS_ARM_IS_STUCK",
         )
@@ -300,7 +306,7 @@ class SpotDriverTest(unittest.TestCase):
             fullbody_feedback.feedback.constrained_manipulation_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_CONSTRAINED_MANIPULATION_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -318,7 +324,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.status.STATUS_COMMAND_OVERRIDDEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "Arm_command | COMMAND_SYNCHRONIZED_FEEDBACK_SET | STATUS_COMMAND_OVERRIDDEN",
         )
@@ -327,7 +333,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.status.STATUS_COMMAND_TIMED_OUT
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "Arm_command | COMMAND_SYNCHRONIZED_FEEDBACK_SET | STATUS_COMMAND_TIMED_OUT",
         )
@@ -336,7 +342,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.status.STATUS_ROBOT_FROZEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "Arm_command | COMMAND_SYNCHRONIZED_FEEDBACK_SET | STATUS_ROBOT_FROZEN",
         )
@@ -345,7 +351,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.status.STATUS_INCOMPATIBLE_HARDWARE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "Arm_command | COMMAND_SYNCHRONIZED_FEEDBACK_SET | STATUS_INCOMPATIBLE_HARDWARE",
         )
@@ -363,7 +369,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_cartesian_feedback.status.STATUS_TRAJECTORY_COMPLETE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_CARTESIAN_FEEDBACK_SET | STATUS_TRAJECTORY_COMPLETE",
         )
@@ -372,7 +378,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_cartesian_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_CARTESIAN_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -381,7 +387,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_cartesian_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_CARTESIAN_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -389,8 +395,9 @@ class SpotDriverTest(unittest.TestCase):
         feedback.command.synchronized_feedback.arm_command_feedback.feedback.arm_cartesian_feedback.status.value = (
             arm_command_feedback.feedback.arm_cartesian_feedback.status.STATUS_TRAJECTORY_CANCELLED
         )
+
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_CARTESIAN_FEEDBACK_SET | STATUS_TRAJECTORY_CANCELLED",
         )
@@ -399,7 +406,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_cartesian_feedback.status.STATUS_TRAJECTORY_STALLED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_CARTESIAN_FEEDBACK_SET | STATUS_TRAJECTORY_STALLED",
         )
@@ -413,7 +420,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_joint_move_feedback.status.STATUS_COMPLETE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_JOINT_MOVE_FEEDBACK_SET | STATUS_COMPLETE",
         )
@@ -422,7 +429,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_joint_move_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_JOINT_MOVE_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -431,7 +438,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_joint_move_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_JOINT_MOVE_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -440,7 +447,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_joint_move_feedback.status.STATUS_STALLED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_JOINT_MOVE_FEEDBACK_SET | STATUS_STALLED",
         )
@@ -454,7 +461,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.named_arm_position_feedback.status.STATUS_COMPLETE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_NAMED_ARM_POSITION_FEEDBACK_SET | STATUS_COMPLETE",
         )
@@ -463,7 +470,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.named_arm_position_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_NAMED_ARM_POSITION_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -472,7 +479,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.named_arm_position_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_NAMED_ARM_POSITION_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -481,7 +488,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.named_arm_position_feedback.status.STATUS_STALLED_HOLDING_ITEM
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_NAMED_ARM_POSITION_FEEDBACK_SET | STATUS_STALLED_HOLDING_ITEM",
         )
@@ -492,7 +499,7 @@ class SpotDriverTest(unittest.TestCase):
         )
         # Arm velocity commands do not provide feedback therefore we should get a success
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_VELOCITY_FEEDBACK_SET",
         )
@@ -506,7 +513,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_gaze_feedback.status.STATUS_TRAJECTORY_COMPLETE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_GAZE_FEEDBACK_SET | STATUS_TRAJECTORY_COMPLETE",
         )
@@ -515,7 +522,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_gaze_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_GAZE_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -524,7 +531,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_gaze_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_GAZE_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -533,7 +540,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_gaze_feedback.status.STATUS_TOOL_TRAJECTORY_STALLED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_GAZE_FEEDBACK_SET | STATUS_TOOL_TRAJECTORY_STALLED",
         )
@@ -544,7 +551,7 @@ class SpotDriverTest(unittest.TestCase):
         )
         # Arm stop commands do not provide feedback therefore we should get a success
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_STOP_FEEDBACK_SET",
         )
@@ -558,7 +565,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_drag_feedback.status.STATUS_DRAGGING
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_DRAG_FEEDBACK_SET | STATUS_DRAGGING",
         )
@@ -567,7 +574,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_drag_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_DRAG_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -576,7 +583,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_drag_feedback.status.STATUS_GRASP_FAILED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_DRAG_FEEDBACK_SET | STATUS_GRASP_FAILED",
         )
@@ -585,7 +592,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_drag_feedback.status.STATUS_OTHER_FAILURE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_DRAG_FEEDBACK_SET | STATUS_OTHER_FAILURE",
         )
@@ -598,7 +605,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_impedance_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_IMPEDANCE_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -607,7 +614,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_impedance_feedback.status.STATUS_TRAJECTORY_COMPLETE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_ARM_IMPEDANCE_FEEDBACK_SET | STATUS_TRAJECTORY_COMPLETE",
         )
@@ -616,7 +623,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_impedance_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_ARM_IMPEDANCE_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -625,7 +632,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_impedance_feedback.status.STATUS_TRAJECTORY_CANCELLED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_IMPEDANCE_FEEDBACK_SET | STATUS_TRAJECTORY_CANCELLED",
         )
@@ -634,7 +641,7 @@ class SpotDriverTest(unittest.TestCase):
             arm_command_feedback.feedback.arm_impedance_feedback.status.STATUS_TRAJECTORY_STALLED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_ARM_IMPEDANCE_FEEDBACK_SET | STATUS_TRAJECTORY_STALLED",
         )
@@ -642,7 +649,7 @@ class SpotDriverTest(unittest.TestCase):
         """ Testing unknown arm command """
         feedback.command.synchronized_feedback.arm_command_feedback.feedback.feedback_choice = FEEDBACK_INVALID
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "Arm Command: FEEDBACK_INVALID",
         )
@@ -658,7 +665,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.status.STATUS_COMMAND_OVERRIDDEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "MOBILITY | COMMAND_SYNCHRONIZED_FEEDBACK | STATUS_COMMAND_OVERRIDDEN",
         )
@@ -667,7 +674,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.status.STATUS_COMMAND_TIMED_OUT
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "MOBILITY | COMMAND_SYNCHRONIZED_FEEDBACK | | STATUS_COMMAND_TIMED_OUT",
         )
@@ -676,7 +683,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.status.STATUS_ROBOT_FROZEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "MOBILITY | COMMAND_SYNCHRONIZED_FEEDBACK | | STATUS_ROBOT_FROZEN",
         )
@@ -685,7 +692,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.status.STATUS_INCOMPATIBLE_HARDWARE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "MOBILITY | COMMAND_SYNCHRONIZED_FEEDBACK | | STATUS_INCOMPATIBLE_HARDWARE",
         )
@@ -703,7 +710,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.se2_trajectory_feedback.status.STATUS_AT_GOAL
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_SE2_TRAJECTORY_FEEDBACK_SET | STATUS_AT_GOAL",
         )
@@ -712,7 +719,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.se2_trajectory_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SE2_TRAJECTORY_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -721,7 +728,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.se2_trajectory_feedback.status.STATUS_NEAR_GOAL
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SE2_TRAJECTORY_FEEDBACK_SET | STATUS_NEAR_GOAL",
         )
@@ -730,7 +737,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.se2_trajectory_feedback.status.STATUS_GOING_TO_GOAL
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SE2_TRAJECTORY_FEEDBACK_SET | STATUS_GOING_TO_GOAL",
         )
@@ -741,7 +748,7 @@ class SpotDriverTest(unittest.TestCase):
         )
         # Planar velocity commands provide no feedback, therefore expect SUCCESS
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_SE2_VELOCITY_FEEDBACK_SET",
         )
@@ -755,7 +762,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.sit_feedback.status.STATUS_IS_SITTING
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_SIT_FEEDBACK_SET | STATUS_IS_SITTING",
         )
@@ -764,7 +771,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.sit_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SIT_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -773,7 +780,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.sit_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_SIT_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -787,7 +794,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stand_feedback.status.STATUS_IS_STANDING
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_STAND_FEEDBACK_SET | STATUS_IS_STANDING",
         )
@@ -796,7 +803,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stand_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_STAND_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -805,7 +812,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stand_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_STAND_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -819,7 +826,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stance_feedback.status.STATUS_TOO_FAR_AWAY
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "FEEDBACK_STANCE_FEEDBACK_SET | STATUS_TOO_FAR_AWAY",
         )
@@ -828,7 +835,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stance_feedback.status.STATUS_STANCED
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_STANCE_FEEDBACK_SET | STATUS_STANCED",
         )
@@ -837,7 +844,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stance_feedback.status.STATUS_GOING_TO_STANCE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_STANCE_FEEDBACK_SET | STATUS_GOING_TO_STANCE",
         )
@@ -846,7 +853,7 @@ class SpotDriverTest(unittest.TestCase):
             mobility_feedback.feedback.stance_feedback.status.STATUS_UNKNOWN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "FEEDBACK_STANCE_FEEDBACK_SET | STATUS_UNKNOWN",
         )
@@ -857,7 +864,9 @@ class SpotDriverTest(unittest.TestCase):
         )
         # Stop commands provide no feedback, therefore expect SUCCESS
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback), GoalResponse.SUCCESS, "FEEDBACK_STOP_FEEDBACK_SET"
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
+            GoalResponse.SUCCESS,
+            "FEEDBACK_STOP_FEEDBACK_SET",
         )
 
         """ Testing stop feedback """
@@ -866,7 +875,7 @@ class SpotDriverTest(unittest.TestCase):
         )
         # follow arm commands provide no feedback, therefore expect SUCCESS
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "FEEDBACK_FOLLOW_ARM_FEEDBACK_SET",
         )
@@ -878,13 +887,15 @@ class SpotDriverTest(unittest.TestCase):
         # mobility command feedback is not set, this could be caused by a command that finishes and resets the feedback status.
         # because of this case, it will return success as long as no other synchronous commands are run afterwards.
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback), GoalResponse.SUCCESS, "MOBILITY | FEEDBACK_NOT_SET"
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
+            GoalResponse.SUCCESS,
+            "MOBILITY | FEEDBACK_NOT_SET",
         )
 
         """ Testing unknown command """
         feedback.command.synchronized_feedback.mobility_command_feedback.feedback.feedback_choice = FEEDBACK_INVALID
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "MOBILITY| FEEDBACK_INVALID",
         )
@@ -900,7 +911,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.status.STATUS_COMMAND_OVERRIDDEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "GRIPPER | COMMAND_SYNCHRONIZED_FEEDBACK | STATUS_COMMAND_OVERRIDDEN",
         )
@@ -909,7 +920,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.status.STATUS_COMMAND_TIMED_OUT
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "GRIPPER | COMMAND_SYNCHRONIZED_FEEDBACK | STATUS_COMMAND_TIMED_OUT",
         )
@@ -918,7 +929,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.status.STATUS_ROBOT_FROZEN
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "GRIPPER | COMMAND_SYNCHRONIZED_FEEDBACK | STATUS_ROBOT_FROZEN",
         )
@@ -927,7 +938,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.status.STATUS_INCOMPATIBLE_HARDWARE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.FAILED,
             "GRIPPER | COMMAND_SYNCHRONIZED_FEEDBACK | STATUS_INCOMPATIBLE_HARDWARE",
         )
@@ -944,7 +955,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.command.claw_gripper_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -953,7 +964,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.command.claw_gripper_feedback.status.STATUS_IN_PROGRESS
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | STATUS_IN_PROGRESS",
         )
@@ -962,7 +973,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.command.claw_gripper_feedback.status.STATUS_AT_GOAL
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | STATUS_AT_GOAL",
         )
@@ -971,7 +982,7 @@ class SpotDriverTest(unittest.TestCase):
             gripper_feedback.command.claw_gripper_feedback.status.STATUS_APPLYING_FORCE
         )
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.SUCCESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | STATUS_APPLYING_FORCE",
         )
@@ -979,7 +990,7 @@ class SpotDriverTest(unittest.TestCase):
         """ Testing unknown gripper command """
         feedback.command.synchronized_feedback.gripper_command_feedback.command.command_choice = FEEDBACK_INVALID
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | FEEDBACK_INVALID",
         )
@@ -987,9 +998,25 @@ class SpotDriverTest(unittest.TestCase):
         """ Testing unknown robot command type """
         feedback.command.command_choice = FEEDBACK_INVALID
         self.assertEqual(
-            self.spot_ros2._robot_command_goal_complete(feedback),
+            self.spot_ros2._robot_command_goal_complete(dummy_command, feedback),
             GoalResponse.IN_PROGRESS,
             "COMMAND_CLAW_GRIPPER_FEEDBACK_SET | FEEDBACK_INVALID",
+        )
+
+        """ Testing battery change pose corner case """
+        feedback.command.command_choice = feedback.command.COMMAND_FULL_BODY_FEEDBACK_SET
+        feedback.command.full_body_feedback.status.value = (
+            feedback.command.full_body_feedback.status.STATUS_COMMAND_OVERRIDDEN
+        )
+
+        overriden_command = RobotCommand()
+        overriden_command.command.full_body_command.command.which = (
+            overriden_command.command.full_body_command.command.COMMAND_BATTERY_CHANGE_POSE_REQUEST_SET
+        )
+        self.assertEqual(
+            self.spot_ros2._robot_command_goal_complete(overriden_command, feedback),
+            GoalResponse.SUCCESS,
+            "NO FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_COMMAND_OVERRIDDEN",
         )
 
 

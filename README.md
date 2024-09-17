@@ -57,6 +57,22 @@ source install/local_setup.bash
 
 We suggest ignoring the `proto2ros_tests` package in the build as it is not necessary for running the driver. If you choose to build it, you will see a number of error messages from testing the failure paths. 
 
+### Alternative - Docker Image
+
+Alternatively, a Dockerfile is available that prepares a ready-to-run ROS2 Humble install with the Spot driver installed.
+
+No special precautions or actions need to be taken to build the image. Just clone the repository and run `docker build` in the root of the repo to build the image.
+
+No special actions need to be taken to run the image either. However, depending on what you intend to _do_ with the driver in your project, the following flags may be useful:
+
+| Flag     | Use             |
+| -------- | --------------- |
+| `--runtime nvidia` + `--gpus all`  | Use the [NVIDIA Container Runtime](https://developer.nvidia.com/container-runtime) to run the container with GPU acceleration |
+| `-e DISPLAY`  | Bind your display to the container in order to run GUI apps. Note that you will need to allow the Docker container to connect to your X11 server, which can be done in a number of ways ranging from disabling X11 authentication entirely, or by allowing the Docker daemon specifically to access your display server.  |
+| `--network host` | Use the host network directly. May help resolve issues connecting to Spot Wifi |
+
+The image does not have the `proto2ros_tests` package built. You'll need to build it yourself inside the container if you need to use it.
+
 # Spot ROS 2 Driver
 
 The Spot driver contains all of the necessary topics, services, and actions for controlling Spot over ROS 2. To launch the driver, run:
@@ -106,6 +122,94 @@ If your image publishing rate is very slow, you can try
 > ```
 > export=FASTRTPS_DEFAULT_PROFILES_FILE=<path_to_file>/custom_dds_profile.xml
 > ```
+
+## Optional Automatic Eye-in-Hand Stereo Calibration Routine for Manipulator (Arm) Payload
+#### Collect Calibration
+An optional custom Automatic Eye-in-Hand Stereo Calibration Routine for the arm is available for use in the ```spot_wrapper``` submodule, where the
+output results can be used with ROS 2 for improved Depth to RGB correspondence for the hand cameras.
+See the readme at [```/spot_wrapper/spot_wrapper/calibration/README.md```](https://github.com/bdaiinstitute/spot_wrapper/tree/main/spot_wrapper/calibration/README.md) for 
+target setup and relevant information.
+
+First, collect a calibration with ```spot_wrapper/spot_wrapper/calibrate_spot_hand_camera_cli.py```.
+Make sure to use the default ```--stereo_pairs``` configuration, and the default tag configuration (```--tag default```).
+
+For the robot and target setup described in [```/spot_wrapper/spot_wrapper/calibration/README.md```](https://github.com/bdaiinstitute/spot_wrapper/tree/main/spot_wrapper/calibration/README.md), the default viewpoint ranges should suffice.
+
+```
+python3 spot_wrapper/spot_wrapper/calibrate_spot_hand_camera_cli.py --ip <IP> -u user -pw <SECRET> --data_path ~/my_collection/ \
+--save_data --result_path ~/my_collection/calibrated.yaml --photo_utilization_ratio 1 --stereo_pairs "[(1,0)]" \
+--spot_rgb_photo_width=640 --spot_rgb_photo_height=480 --tag default --legacy_charuco_pattern True
+```
+
+Then, you can run a publisher to transform the depth image into the rgb images frame with the same image
+dimensions, so that finding the 3D location of a feature found in rgb can be as easy as passing
+the image feature pixel coordinates to the registered depth image, and extracting the 3D location.
+For all possible command line arguments, run ```ros2 run spot_driver calibated_reregistered_hand_camera_depth_publisher.py -h```
+  
+#### Run the Calibrated Re-Publisher
+```
+ros2 run spot_driver calibrated_reregistered_hand_camera_depth_publisher.py --tag=default --calibration_path <SAVED_CAL> --robot_name <ROBOT_NAMESPACE> --topic_name /depth_registered/hand_custom_cal/image
+```
+
+You can treat the reregistered topic, (in the above example, ```<ROBOT_NAME>/depth_registered/hand_custom_cal/image```)
+as a drop in replacement by the registered image published by the default spot driver
+(```<ROBOT_NAME>/depth_registered/hand/image```). The registered depth can be easily used in tools 
+like downstream, like Open3d, (see [creating RGBD Images](https://www.open3d.org/docs/release/python_api/open3d.geometry.RGBDImage.html) and [creating color point clouds from RGBD Images](https://www.open3d.org/docs/release/python_api/open3d.geometry.PointCloud.html#open3d.geometry.PointCloud.create_from_rgbd_image)), due to matching image dimensions and registration
+to a shared frame.
+
+#### Comparing Calibration Results Quick Sanity Check
+You can compare the new calibration to the old calibration through comparing visualizing 
+the colored point cloud from a bag in RViz. See RViz setup below the bagging instructions.
+
+
+First, collect a bag where there is a an object of a clearly different color in the foreground then
+that of the background.
+
+```
+ROBOT_NAME=<ROBOT_NAME> && \ 
+ros2 bag record --output drop_in_test --topics /tf /tf_static \
+/${ROBOT_NAME}/depth/hand/image /${ROBOT_NAME}/camera/hand/camera_info \
+/${ROBOT_NAME}/joint_states /${ROBOT_NAME}/camera/hand/image \
+/${ROBOT_NAME}/depth_registered/hand/image 
+```
+
+To see what the default calibration looks like:
+```
+# In seperate terminals
+
+ros2 bag play drop_in_test --loop
+ROBOT_NAME=<ROBOT_NAME> && \
+ros2 launch spot_driver point_cloud_xyzrgb.launch.py spot_name:=${ROBOT_NAME} camera:=hand
+```
+
+To see what the new calibration looks like:
+```
+# In seperate terminals
+ROBOT_NAME=<ROBOT_NAME> && \
+ros2 bag play drop_in_test --loop --topics /${ROBOT_NAME}/depth/hand/image \
+/${ROBOT_NAME}/camera/hand/camera_info /${ROBOT_NAME}/joint_states \
+/${ROBOT_NAME}/camera/hand/image /tf /tf_static
+
+ROBOT_NAME=<ROBOT_NAME> && \
+CALIBRATION_PATH=<CALIBRATION_PATH> && \
+ros2 run spot_driver calibrated_reregistered_hand_camera_depth_publisher.py --robot_name ${ROBOT_NAME} \
+--calibration_path ${CALIBRATION_PATH} --topic depth_registered/hand/image
+
+ROBOT_NAME=<ROBOT_NAME> && \
+ros2 launch spot_driver point_cloud_xyzrgb.launch.py spot_name:=${ROBOT_NAME} camera:=hand
+```
+
+#### RVIZ Setup for Sanity Check:
+Set global frame to be ```/<ROBOT_NAME>/hand```
+
+Add (bottom left) -> by topic ->
+```/<ROBOT_NAME>/depth_registered/hand/points``` -> ok
+
+On the left pane, expand the PointCloud2 message. Expand Topic. Set History
+Policy to be Keep Last, Reliability Policy to be Best Effort, and Durability policy to be
+Volatile (select these from the dropdowns).
+
+
 
 ## Spot CAM
 Due to known issues with the Spot CAM, it is disabled by default. To enable publishing and usage over the driver, add the following command in your configuration YAML file:

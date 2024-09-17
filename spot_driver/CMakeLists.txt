@@ -10,6 +10,12 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
   bosdyn_api_msgs
   bosdyn_spot_api_msgs
@@ -203,6 +209,11 @@ install(
   spot_driver/spot_ros2.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME spot_ros2
+  )
+install(
+  PROGRAMS
+  spot_driver/calibrated_reregistered_hand_camera_depth_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
   )
 install(
   PROGRAMS

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds xmlns="http://www.eprosima.com">
+    <profiles>
+        <publisher profile_name="service">
+            <qos>
+                <reliability>
+                    <max_blocking_time>
+                        <sec>5</sec>
+                    </max_blocking_time>
+                </reliability>
+            </qos>
+        </publisher>
+    </profiles>
+</dds>

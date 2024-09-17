@@ -3,6 +3,7 @@
 <robot name="spot" xmlns:xacro="http://www.ros.org/wiki/xacro">
     <xacro:macro name="load_spot" params="
     arm:=false
+    feet:=false
     tf_prefix">
 
         <link name="${tf_prefix}body">
@@ -80,7 +81,7 @@
             <axis xyz="1 0 0" />
             <parent link="${tf_prefix}body" />
             <child link="${tf_prefix}front_left_hip" />
-            <limit effort="1000" velocity="1000.00" lower="-0.78539816339744827899"
+            <limit effort="45" velocity="17.647" lower="-0.78539816339744827899"
                 upper="0.78539816339744827899" />
         </joint>
         <link name="${tf_prefix}front_left_upper_leg">
@@ -109,7 +110,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}front_left_hip" />
             <child link="${tf_prefix}front_left_upper_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-0.89884456477707963539"
+            <limit effort="45" velocity="17.647" lower="-0.89884456477707963539"
                 upper="2.2951079663725435509" />
         </joint>
         <link name="${tf_prefix}front_left_lower_leg">
@@ -144,7 +145,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}front_left_upper_leg" />
             <child link="${tf_prefix}front_left_lower_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-2.7929" upper="-0.254801" />
+            <limit effort="115" velocity="12.0" lower="-2.7929" upper="-0.254801" />
         </joint>
         <link name="${tf_prefix}front_right_hip">
             <visual>
@@ -166,7 +167,7 @@
             <axis xyz="1 0 0" />
             <parent link="${tf_prefix}body" />
             <child link="${tf_prefix}front_right_hip" />
-            <limit effort="1000" velocity="1000.00" lower="-0.78539816339744827899"
+            <limit effort="45" velocity="17.647" lower="-0.78539816339744827899"
                 upper="0.78539816339744827899" />
         </joint>
         <link name="${tf_prefix}front_right_upper_leg">
@@ -195,7 +196,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}front_right_hip" />
             <child link="${tf_prefix}front_right_upper_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-0.89884456477707963539"
+            <limit effort="45" velocity="17.647" lower="-0.89884456477707963539"
                 upper="2.2951079663725435509" />
         </joint>
         <link name="${tf_prefix}front_right_lower_leg">
@@ -230,7 +231,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}front_right_upper_leg" />
             <child link="${tf_prefix}front_right_lower_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-2.7929" upper="-0.247563" />
+            <limit effort="115" velocity="12.0" lower="-2.7929" upper="-0.247563" />
         </joint>
         <link name="${tf_prefix}rear_left_hip">
             <visual>
@@ -252,7 +253,7 @@
             <axis xyz="1 0 0" />
             <parent link="${tf_prefix}body" />
             <child link="${tf_prefix}rear_left_hip" />
-            <limit effort="1000" velocity="1000.00" lower="-0.78539816339744827899"
+            <limit effort="45" velocity="17.647" lower="-0.78539816339744827899"
                 upper="0.78539816339744827899" />
         </joint>
         <link name="${tf_prefix}rear_left_upper_leg">
@@ -281,7 +282,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}rear_left_hip" />
             <child link="${tf_prefix}rear_left_upper_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-0.89884456477707963539"
+            <limit effort="45" velocity="17.647" lower="-0.89884456477707963539"
                 upper="2.2951079663725435509" />
         </joint>
         <link name="${tf_prefix}rear_left_lower_leg">
@@ -316,7 +317,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}rear_left_upper_leg" />
             <child link="${tf_prefix}rear_left_lower_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-2.7929" upper="-0.267153" />
+            <limit effort="115" velocity="12.0" lower="-2.7929" upper="-0.267153" />
         </joint>
         <link name="${tf_prefix}rear_right_hip">
             <visual>
@@ -338,7 +339,7 @@
             <axis xyz="1 0 0" />
             <parent link="${tf_prefix}body" />
             <child link="${tf_prefix}rear_right_hip" />
-            <limit effort="1000" velocity="1000.00" lower="-0.78539816339744827899"
+            <limit effort="45" velocity="17.647" lower="-0.78539816339744827899"
                 upper="0.78539816339744827899" />
         </joint>
         <link name="${tf_prefix}rear_right_upper_leg">
@@ -367,7 +368,7 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}rear_right_hip" />
             <child link="${tf_prefix}rear_right_upper_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-0.89884456477707963539"
+            <limit effort="45" velocity="17.647" lower="-0.89884456477707963539"
                 upper="2.2951079663725435509" />
         </joint>
         <link name="${tf_prefix}rear_right_lower_leg">
@@ -402,19 +403,27 @@
             <axis xyz="0 1 0" />
             <parent link="${tf_prefix}rear_right_upper_leg" />
             <child link="${tf_prefix}rear_right_lower_leg" />
-            <limit effort="1000" velocity="1000.00" lower="-2.7929" upper="-0.257725" />
+            <limit effort="115" velocity="12.0" lower="-2.7929" upper="-0.257725" />
         </joint>
 
         <!-- Standard accessories. -->
         <xacro:include filename="$(find spot_description)/urdf/accessories.urdf.xacro" />
 
         <!-- Optional custom includes. -->
-        <xacro:include filename="$(optenv SPOT_URDF_EXTRAS empty.urdf)" />
+
+        <xacro:property name="default_empty_urdf" value="$(find spot_description)/urdf/empty.urdf" />
+        <xacro:include filename="$(optenv SPOT_URDF_EXTRAS ${default_empty_urdf})" />
 
         <!-- Include Arm if necessary-->
         <xacro:if value="${arm}">
             <xacro:include filename="$(find spot_description)/urdf/spot_arm_macro.urdf" />
             <xacro:load_arm tf_prefix="${tf_prefix}" />
+        </xacro:if>
+
+        <!-- Include links at feet if necessary -->
+        <xacro:if value="${feet}">
+            <xacro:include filename="$(find spot_description)/urdf/spot_feet_macro.urdf" />
+            <xacro:load_feet tf_prefix="${tf_prefix}" />
         </xacro:if>
     </xacro:macro>
 </robot>
