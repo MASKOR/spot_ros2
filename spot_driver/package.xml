@@ -12,6 +12,7 @@
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
   <depend>bosdyn</depend>
+  <depend>bosdyn_cmake_module</depend>
   <depend>bosdyn_msgs</depend>
   <depend>common_interfaces</depend>
   <depend>cv_bridge</depend>

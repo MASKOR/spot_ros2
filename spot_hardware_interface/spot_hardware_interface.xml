@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.-->
-<library path="spot_ros2_control">
-  <class name="spot_ros2_control/SpotHardware"
-         type="spot_ros2_control::SpotHardware"
+<library path="spot_hardware_interface">
+  <class name="spot_hardware_interface/SpotHardware"
+         type="spot_hardware_interface::SpotHardware"
          base_class_type="hardware_interface::SystemInterface">
     <description>
       Generic Hardware Interface for Spot.

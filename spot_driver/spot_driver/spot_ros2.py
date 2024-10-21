@@ -124,6 +124,7 @@ from spot_msgs.srv import (  # type: ignore
     OverrideGraspOrCarry,
     PlaySound,
     RetrieveLogpoint,
+    SetGripperAngle,
     SetGripperCameraParameters,
     SetLEDBrightness,
     SetLocomotion,
@@ -458,9 +459,6 @@ class SpotROS(Node):
 
         self.create_subscription(Twist, "cmd_vel", self.cmd_velocity_callback, 1, callback_group=self.group)
         self.create_subscription(Pose, "body_pose", self.body_pose_callback, 1, callback_group=self.group)
-        self.create_subscription(
-            JointState, "arm_joint_commands", self.arm_joint_cmd_callback, 100, callback_group=self.group
-        )
         self.create_service(
             Trigger,
             "claim",
@@ -568,6 +566,12 @@ class SpotROS(Node):
                 lambda request, response: self.service_wrapper("arm_carry", self.handle_arm_carry, request, response),
                 callback_group=self.group,
             )
+            self.create_subscription(
+                JointState, "arm_joint_commands", self.arm_joint_cmd_callback, 100, callback_group=self.group
+            )
+            self.create_subscription(
+                PoseStamped, "arm_pose_commands", self.arm_pose_cmd_callback, 100, callback_group=self.group
+            )
 
             if not self.gripperless:
                 self.create_service(
@@ -583,6 +587,14 @@ class SpotROS(Node):
                     "close_gripper",
                     lambda request, response: self.service_wrapper(
                         "close_gripper", self.handle_close_gripper, request, response
+                    ),
+                    callback_group=self.group,
+                )
+                self.create_service(
+                    SetGripperAngle,
+                    "set_gripper_angle",
+                    lambda request, response: self.service_wrapper(
+                        "set_gripper_angle", self.handle_gripper_angle, request, response
                     ),
                     callback_group=self.group,
                 )
@@ -1289,6 +1301,19 @@ class SpotROS(Node):
             response.message = "Spot wrapper is undefined"
             return response
         response.success, response.message = self.spot_wrapper.spot_arm.gripper_close()
+        return response
+
+    def handle_gripper_angle(
+        self, request: SetGripperAngle.Request, response: SetGripperAngle.Response
+    ) -> SetGripperAngle.Response:
+        """ROS service to set the gripper angle between 0-90 degrees"""
+        if self.spot_wrapper is None:
+            response.success = False
+            response.message = "Spot wrapper is undefined"
+            return response
+        response.success, response.message = self.spot_wrapper.spot_arm.gripper_angle_open(
+            gripper_ang=request.gripper_angle, ensure_power_on_and_stand=False
+        )
         return response
 
     def handle_clear_behavior_fault(
@@ -2508,7 +2533,7 @@ class SpotROS(Node):
     def body_pose_callback(self, data: Pose) -> None:
         """Callback for cmd_vel command"""
         if self.spot_wrapper is None:
-            self.get_logger().info("Mock mode, received command vel " + str(data))
+            self.get_logger().info("Mock mode, received command pose " + str(data))
             return
         q = Quaternion()
         q.x = data.orientation.x
@@ -2527,7 +2552,7 @@ class SpotROS(Node):
 
     def arm_joint_cmd_callback(self, data: JointState) -> None:
         if not self.spot_wrapper:
-            self.get_logger().info(f"Mock mode, received arm joint commdn {data}")
+            self.get_logger().info(f"Mock mode, received arm joint command {data}")
             return
         arm_joint_map = {"sh0": None, "sh1": None, "el0": None, "el1": None, "wr0": None, "wr1": None}
         # Check we have the right number of joints for the arm
@@ -2551,6 +2576,27 @@ class SpotROS(Node):
                 return
 
         self.spot_wrapper.arm_joint_cmd(**arm_joint_map)
+
+    def arm_pose_cmd_callback(self, data: PoseStamped) -> None:
+        if not self.spot_wrapper:
+            self.get_logger().info(f"Mock mode, received arm pose command {data}")
+            return
+        result = self.spot_wrapper.spot_arm.hand_pose(
+            x=data.pose.position.x,
+            y=data.pose.position.y,
+            z=data.pose.position.z,
+            qx=data.pose.orientation.x,
+            qy=data.pose.orientation.y,
+            qz=data.pose.orientation.z,
+            qw=data.pose.orientation.w,
+            ref_frame=data.header.frame_id,
+            ensure_power_on_and_stand=False,
+            blocking=False,
+        )
+        if not result[0]:
+            self.get_logger().warning(f"Failed to go to arm pose: {result[1]}")
+        else:
+            self.get_logger().info("Successfully went to arm pose")
 
     def handle_graph_nav_get_localization_pose(
         self,
@@ -2820,10 +2866,7 @@ class SpotROS(Node):
 
         # run navigate_to
         resp = self.spot_wrapper.spot_graph_nav._navigate_to(
-            upload_path=goal_handle.request.upload_path,
-            navigate_to=goal_handle.request.navigate_to,
-            initial_localization_fiducial=goal_handle.request.initial_localization_fiducial,
-            initial_localization_waypoint=goal_handle.request.initial_localization_waypoint,
+            waypoint_id=goal_handle.request.waypoint_id,
         )
         self.run_navigate_to = False
         feedback_thread.join()

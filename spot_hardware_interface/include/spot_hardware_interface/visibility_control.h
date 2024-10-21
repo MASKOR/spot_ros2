@@ -33,28 +33,28 @@
 
 #if defined _WIN32 || defined __CYGWIN__
 #ifdef __GNUC__
-#define SPOT_ROS2_CONTROL_EXPORT __attribute__((dllexport))
-#define SPOT_ROS2_CONTROL_IMPORT __attribute__((dllimport))
+#define SPOT_HARDWARE_INTERFACE_EXPORT __attribute__((dllexport))
+#define SPOT_HARDWARE_INTERFACE_IMPORT __attribute__((dllimport))
 #else
-#define SPOT_ROS2_CONTROL_EXPORT __declspec(dllexport)
-#define SPOT_ROS2_CONTROL_IMPORT __declspec(dllimport)
+#define SPOT_HARDWARE_INTERFACE_EXPORT __declspec(dllexport)
+#define SPOT_HARDWARE_INTERFACE_IMPORT __declspec(dllimport)
 #endif
-#ifdef SPOT_ROS2_CONTROL_BUILDING_DLL
-#define SPOT_ROS2_CONTROL_PUBLIC SPOT_ROS2_CONTROL_EXPORT
+#ifdef SPOT_HARDWARE_INTERFACE_BUILDING_DLL
+#define SPOT_HARDWARE_INTERFACE_PUBLIC SPOT_HARDWARE_INTERFACE_EXPORT
 #else
-#define SPOT_ROS2_CONTROL_PUBLIC SPOT_ROS2_CONTROL_IMPORT
+#define SPOT_HARDWARE_INTERFACE_PUBLIC SPOT_HARDWARE_INTERFACE_IMPORT
 #endif
-#define SPOT_ROS2_CONTROL_PUBLIC_TYPE SPOT_ROS2_CONTROL_PUBLIC
-#define SPOT_ROS2_CONTROL_LOCAL
+#define SPOT_HARDWARE_INTERFACE_PUBLIC_TYPE SPOT_HARDWARE_INTERFACE_PUBLIC
+#define SPOT_HARDWARE_INTERFACE_LOCAL
 #else
-#define SPOT_ROS2_CONTROL_EXPORT __attribute__((visibility("default")))
-#define SPOT_ROS2_CONTROL_IMPORT
+#define SPOT_HARDWARE_INTERFACE_EXPORT __attribute__((visibility("default")))
+#define SPOT_HARDWARE_INTERFACE_IMPORT
 #if __GNUC__ >= 4
-#define SPOT_ROS2_CONTROL_PUBLIC __attribute__((visibility("default")))
-#define SPOT_ROS2_CONTROL_LOCAL __attribute__((visibility("hidden")))
+#define SPOT_HARDWARE_INTERFACE_PUBLIC __attribute__((visibility("default")))
+#define SPOT_HARDWARE_INTERFACE_LOCAL __attribute__((visibility("hidden")))
 #else
-#define SPOT_ROS2_CONTROL_PUBLIC
-#define SPOT_ROS2_CONTROL_LOCAL
+#define SPOT_HARDWARE_INTERFACE_PUBLIC
+#define SPOT_HARDWARE_INTERFACE_LOCAL
 #endif
-#define SPOT_ROS2_CONTROL_PUBLIC_TYPE
+#define SPOT_HARDWARE_INTERFACE_PUBLIC_TYPE
 #endif

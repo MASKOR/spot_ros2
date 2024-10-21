@@ -86,6 +86,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ListLogpoints.srv"
   "srv/RetrieveLogpoint.srv"
   "srv/RobotCommand.srv"
+  "srv/SetGripperAngle.srv"
   "srv/StoreLogpoint.srv"
   "srv/TagLogpoint.srv"
   "srv/GetLEDBrightness.srv"

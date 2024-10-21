@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
 
-list(APPEND CMAKE_PREFIX_PATH /opt/spot-cpp-sdk)
-
 project(spot_driver)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -18,6 +16,7 @@ endif()
 
 set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
   bosdyn_api_msgs
+  bosdyn_cmake_module
   bosdyn_spot_api_msgs
   cv_bridge
   geometry_msgs
@@ -36,11 +35,13 @@ set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
-find_package(bosdyn REQUIRED)
-find_package(OpenCV 4 REQUIRED)
+
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_ROS_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
+
+find_package(bosdyn REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 
 ###
 # Spot API
@@ -85,7 +86,7 @@ target_include_directories(spot_api PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(spot_api PUBLIC bosdyn::bosdyn_client_static)
+target_link_libraries(spot_api PUBLIC bosdyn::bosdyn_client)
 set_property(TARGET spot_api PROPERTY POSITION_INDEPENDENT_CODE ON)
 ament_target_dependencies(spot_api PUBLIC ${THIS_PACKAGE_INCLUDE_ROS_DEPENDS})
 

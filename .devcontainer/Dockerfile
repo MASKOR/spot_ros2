@@ -29,16 +29,19 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
 
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash"
 
+ARG SPOT_SDK_VERSION="4.1.0"
+ARG SPOT_MSG_VERSION="${SPOT_SDK_VERSION}-4"
+
 # Install bosdyn_msgs package
-RUN curl -sL https://github.com/bdaiinstitute/bosdyn_msgs/releases/download/4.0.2/ros-humble-bosdyn_msgs_4.0.2-jammy_amd64.run --output /tmp/ros-humble-bosdyn_msgs_4.0.2-jammy_amd64.run --silent \
-  && chmod +x /tmp/ros-humble-bosdyn_msgs_4.0.2-jammy_amd64.run \
-  && ((yes || true) | /tmp/ros-humble-bosdyn_msgs_4.0.2-jammy_amd64.run) \
-  && rm /tmp/ros-humble-bosdyn_msgs_4.0.2-jammy_amd64.run
+RUN curl -sL https://github.com/bdaiinstitute/bosdyn_msgs/releases/download/${SPOT_MSG_VERSION}/ros-humble-bosdyn_msgs_${SPOT_MSG_VERSION}-jammy_amd64.run --output /tmp/ros-humble-bosdyn_msgs_${SPOT_MSG_VERSION}-jammy_amd64.run --silent \
+  && chmod +x /tmp/ros-humble-bosdyn_msgs_${SPOT_MSG_VERSION}-jammy_amd64.run \
+  && ((yes || true) | /tmp/ros-humble-bosdyn_msgs_${SPOT_MSG_VERSION}-jammy_amd64.run) \
+  && rm /tmp/ros-humble-bosdyn_msgs_${SPOT_MSG_VERSION}-jammy_amd64.run
 
 # Install spot_cpp_sdk package
-RUN curl -sL https://github.com/bdaiinstitute/spot-cpp-sdk/releases/download/v4.0.2/spot-cpp-sdk_4.0.2_amd64.deb --output /tmp/spot-cpp-sdk_4.0.2_amd64.deb --silent \
-  && dpkg -i /tmp/spot-cpp-sdk_4.0.2_amd64.deb \
-  && rm /tmp/spot-cpp-sdk_4.0.2_amd64.deb
+RUN curl -sL https://github.com/bdaiinstitute/spot-cpp-sdk/releases/download/v${SPOT_SDK_VERSION}/spot-cpp-sdk_${SPOT_SDK_VERSION}_amd64.deb --output /tmp/spot-cpp-sdk_${SPOT_SDK_VERSION}_amd64.deb --silent \
+  && dpkg -i /tmp/spot-cpp-sdk_${SPOT_SDK_VERSION}_amd64.deb \
+  && rm /tmp/spot-cpp-sdk_${SPOT_SDK_VERSION}_amd64.deb
 
 # Install bosdyn_msgs missing dependencies
 RUN python -m pip install --no-cache-dir --upgrade pip==22.3.1 \
@@ -46,11 +49,11 @@ RUN python -m pip install --no-cache-dir --upgrade pip==22.3.1 \
     numpy==1.24.1 \
     pytest-cov==4.1.0 \
     pytest-xdist==3.5.0 \
-    bosdyn-api==4.0.2 \
-    bosdyn-core==4.0.2 \
-    bosdyn-client==4.0.2 \
-    bosdyn-mission==4.0.2 \
-    bosdyn-choreography-client==4.0.2 \
+    bosdyn-api==${SPOT_SDK_VERSION} \
+    bosdyn-core==${SPOT_SDK_VERSION} \
+    bosdyn-client==${SPOT_SDK_VERSION} \
+    bosdyn-mission==${SPOT_SDK_VERSION} \
+    bosdyn-choreography-client==${SPOT_SDK_VERSION} \
     pip cache purge
 
 # Install spot_wrapper requirements

@@ -34,8 +34,6 @@ jobs:
     strategy:
       matrix:
         config:
-        - { python: "3.8" }
-        - { python: "3.9" }
         - { python: "3.10" }
     steps:
       - name: Checkout repository

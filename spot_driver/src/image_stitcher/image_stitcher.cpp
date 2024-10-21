@@ -327,8 +327,8 @@ Image::SharedPtr MiddleCamera::stitch(const std::shared_ptr<const Image>& left,
   // While the image is coming from the camera on the left of the robot, it sees the right side
   // of the scene and vice versa. This may need to be extracted if this code is to be generalized
   // for something other than the Boston Dynamics Spot Robot, as well as checking the homographies.
-  const auto scene_right = cv_bridge::toCvShare(left);
-  const auto scene_left = cv_bridge::toCvShare(right);
+  const auto scene_right = cv_bridge::toCvShare(left, sensor_msgs::image_encodings::BGR8);
+  const auto scene_left = cv_bridge::toCvShare(right, sensor_msgs::image_encodings::BGR8);
 
   // Transform the images into the virtual center camera space
   cv::warpPerspective(scene_left->image, warped_images_[0], homography_[0], result_size_);

@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.22)
 # This is here so we can use jthread from C++ 20
 set(CMAKE_CXX_STANDARD 20)
 
-project(spot_ros2_control)
+project(spot_hardware_interface)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -14,15 +14,16 @@ endif()
 # Dependencies
 find_package(ament_cmake REQUIRED)
 set(THIS_PACKAGE_INCLUDE_DEPENDS
+  hardware_interface
+  bosdyn_cmake_module
+  pluginlib
   rclcpp
   rclcpp_lifecycle
-  sensor_msgs
-  std_msgs
-  spot_hardware_interface
 )
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
+find_package(bosdyn REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -34,51 +35,42 @@ endif()
 
 # Add the hardware interface
 add_library(
-  spot_ros2_control
+  spot_hardware_interface
   SHARED
-  src/spot_joint_map.cpp
+  src/spot_hardware_interface.cpp
 )
-target_compile_features(spot_ros2_control PUBLIC cxx_std_20)
-target_include_directories(spot_ros2_control PUBLIC
+target_compile_features(spot_hardware_interface PUBLIC cxx_std_20)
+target_include_directories(spot_hardware_interface PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
+target_link_libraries(spot_hardware_interface PUBLIC bosdyn::bosdyn_client)
 ament_target_dependencies(
-  spot_ros2_control PUBLIC
+  spot_hardware_interface PUBLIC
   ${THIS_PACKAGE_INCLUDE_DEPENDS}
 )
 
+# Causes the visibility macros to use dllexport rather than dllimport,
+# which is appropriate when building the dll but not consuming it.
+target_compile_definitions(${PROJECT_NAME} PRIVATE "SPOT_HARDWARE_INTERFACE_BUILDING_DLL")
 
-# Add example nodes and install them
-add_executable(noarm_squat src/noarm_squat.cpp)
-target_link_libraries(noarm_squat spot_ros2_control)
+# Export hardware plugin
+pluginlib_export_plugin_description_file(hardware_interface spot_hardware_interface.xml)
 
-add_executable(wiggle_arm src/wiggle_arm.cpp)
-target_link_libraries(wiggle_arm spot_ros2_control)
-
-add_executable(joint_command_passthrough src/joint_command_passthrough.cpp)
-target_link_libraries(joint_command_passthrough spot_ros2_control)
-
-install(TARGETS noarm_squat wiggle_arm joint_command_passthrough
-  DESTINATION lib/${PROJECT_NAME})
 
 install(
   DIRECTORY include/
   DESTINATION include
 )
 
-install(
-  DIRECTORY launch config rviz
-  DESTINATION share/${PROJECT_NAME}
-)
-
-install(TARGETS spot_ros2_control
-  EXPORT export_spot_ros2_control
+install(TARGETS spot_hardware_interface
+  EXPORT export_spot_hardware_interface
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
-ament_export_targets(export_spot_ros2_control HAS_LIBRARY_TARGET)
+ament_export_targets(export_spot_hardware_interface HAS_LIBRARY_TARGET)
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS} bosdyn)
 
 ament_package()

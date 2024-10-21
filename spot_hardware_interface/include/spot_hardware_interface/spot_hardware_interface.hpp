@@ -31,8 +31,8 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
-#include "spot_ros2_control/spot_joint_map.hpp"
-#include "spot_ros2_control/visibility_control.h"
+#include "spot_hardware_interface/spot_constants.hpp"
+#include "spot_hardware_interface/visibility_control.h"
 
 #include "bosdyn/client/lease/lease_keepalive.h"
 #include "bosdyn/client/robot_command/robot_command_builder.h"
@@ -48,7 +48,7 @@
 
 using StateHandler = std::function<void(::bosdyn::api::RobotStateStreamResponse&)>;
 
-namespace spot_ros2_control {
+namespace spot_hardware_interface {
 
 struct JointStates {
   // This struct is used to hold a set of joint states of the robot.
@@ -87,34 +87,34 @@ class SpotHardware : public hardware_interface::SystemInterface {
  public:
   RCLCPP_SHARED_PTR_DEFINITIONS(SpotHardware)
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State& previous_state) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State& previous_state) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State& previous_state) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State& previous_state) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::return_type read(const rclcpp::Time& time, const rclcpp::Duration& period) override;
 
-  SPOT_ROS2_CONTROL_PUBLIC
+  SPOT_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::return_type write(const rclcpp::Time& time, const rclcpp::Duration& period) override;
 
  private:
@@ -226,4 +226,4 @@ class SpotHardware : public hardware_interface::SystemInterface {
   std::vector<double> hw_states_;
 };
 
-}  // namespace spot_ros2_control
+}  // namespace spot_hardware_interface

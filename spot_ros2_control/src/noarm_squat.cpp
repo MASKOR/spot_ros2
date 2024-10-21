@@ -18,11 +18,18 @@ class NoarmSquat : public rclcpp::Node {
  public:
   NoarmSquat()
       : Node("noarm_squat"), squat_state_{SquatState::INITIALIZING}, initialized_{false}, count_{0}, njoints_{12} {
-    stand_joint_angles_ = declare_parameter("stand_joint_angles", std::vector<double>{});
-    squat_joint_angles_ = declare_parameter("squat_joint_angles", std::vector<double>{});
+    // The following joint angles are in the order of FL_hip_x, FL_hip_y, FL_knee, FR..., RL..., RR...
+    stand_joint_angles_ = declare_parameter(
+        "stand_joint_angles",
+        std::vector<double>{0.12, 0.72, -1.45, -0.12, 0.72, -1.45, 0.12, 0.72, -1.45, -0.12, 0.72, -1.45});
+    squat_joint_angles_ = declare_parameter(
+        "squat_joint_angles",
+        std::vector<double>{0.15, 1.30, -2.25, -0.15, 1.30, -2.25, 0.15, 1.30, -2.25, -0.15, 1.30, -2.25});
     const auto command_rate = declare_parameter("command_rate", 50.0);  // how frequently to send commands in Hz
     const auto seconds_per_motion =
         declare_parameter("seconds_per_motion", 2.0);  // how many seconds the squat and stand motions should take
+
+    spot_name = declare_parameter("spot_name", "");
 
     if (stand_joint_angles_.size() != njoints_) {
       throw std::logic_error("Stand joint angles is the wrong size!");
@@ -36,7 +43,7 @@ class NoarmSquat : public rclcpp::Node {
 
     command_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>("forward_position_controller/commands", 10);
     joint_states_sub_ = create_subscription<sensor_msgs::msg::JointState>(
-        "joint_states", 10, std::bind(&NoarmSquat::joint_states_callback, this, std::placeholders::_1));
+        "low_level/joint_states", 10, std::bind(&NoarmSquat::joint_states_callback, this, std::placeholders::_1));
 
     const auto timer_period =
         std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(1. / command_rate));
@@ -44,6 +51,7 @@ class NoarmSquat : public rclcpp::Node {
   }
 
  private:
+  std::string spot_name;
   // For storing joint angles
   std::vector<double> stand_joint_angles_;
   std::vector<double> squat_joint_angles_;
@@ -66,8 +74,10 @@ class NoarmSquat : public rclcpp::Node {
   void joint_states_callback(const sensor_msgs::msg::JointState& msg) {
     if (!initialized_) {
       RCLCPP_INFO_STREAM(get_logger(), "Received starting joint states");
-      bool successful = spot_ros2_control::order_joints(msg, init_joint_angles_);
+      sensor_msgs::msg::JointState ordered_joint_states;
+      bool successful = spot_ros2_control::order_joint_states(spot_name, msg, ordered_joint_states);
       if (successful) {
+        init_joint_angles_ = ordered_joint_states.position;
         RCLCPP_INFO_STREAM(get_logger(), "Initialized! Robot will begin to move.");
         initialized_ = true;
       }

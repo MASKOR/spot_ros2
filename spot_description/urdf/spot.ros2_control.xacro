@@ -65,4 +65,33 @@
 
     </xacro:macro>
 
+    <xacro:macro name="spot_ros2_control" params="interface_type has_arm hostname username password tf_prefix">
+        <!-- Currently implements a simple system interface that covers all joints of the robot.
+        In the future, we could make different hardware interfaces for the body, arm, etc. -->
+        <ros2_control name="SpotSystem" type="system">
+            <hardware>
+            <xacro:if value="${interface_type == 'mock'}">
+                <plugin>mock_components/GenericSystem</plugin>
+                <param name="mock_sensor_commands">false</param>
+                <param name="state_following_offset">0.0</param>
+            </xacro:if>
+            <xacro:if value="${interface_type == 'robot'}">
+                <plugin>spot_hardware_interface/SpotHardware</plugin>
+                <param name="hostname">$(optenv SPOT_IP ${hostname})</param>
+                <param name="username">$(optenv BOSDYN_CLIENT_USERNAME ${username})</param>
+                <param name="password">$(optenv BOSDYN_CLIENT_PASSWORD ${password})</param>
+            </xacro:if>
+            </hardware>
+            <!-- Add the legs -->
+            <xacro:leg front_or_rear="front" left_or_right="left" tf_prefix="${tf_prefix}" />
+            <xacro:leg front_or_rear="front" left_or_right="right" tf_prefix="${tf_prefix}" />
+            <xacro:leg front_or_rear="rear" left_or_right="left" tf_prefix="${tf_prefix}" />
+            <xacro:leg front_or_rear="rear" left_or_right="right" tf_prefix="${tf_prefix}" />
+            <!-- Add the arm + the gripper if the robot has an arm -->
+            <xacro:if value="${has_arm}">
+                <xacro:arm tf_prefix="${tf_prefix}" />
+            </xacro:if>
+        </ros2_control>
+    </xacro:macro>
+
 </robot>

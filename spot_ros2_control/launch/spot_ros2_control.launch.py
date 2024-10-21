@@ -5,8 +5,9 @@ from tempfile import NamedTemporaryFile
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
     FindExecutable,
@@ -16,20 +17,25 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
-from spot_driver.launch.spot_launch_helpers import get_login_parameters, spot_has_arm
+from spot_driver.launch.spot_launch_helpers import (
+    IMAGE_PUBLISHER_ARGS,
+    declare_image_publisher_args,
+    get_login_parameters,
+    spot_has_arm,
+)
 
 THIS_PACKAGE = "spot_ros2_control"
 
 
-def create_controllers_config(spot_name: str, has_arm: bool) -> None:
+def create_controllers_config(spot_name: str, has_arm: bool) -> str:
     """Writes a configuration file used to put the ros2 control nodes into a namespace.
     This is necessary as if your ros2 control nodes are launched in a namespace, the configuration yaml used
     must also reflect this same namespace when defining parameters of your controllers.
 
     Args:
         spot_name (str): Name of spot. If it's the empty string, the default controller file with no namespace is used.
-        has_arm (bool): Whether or not your robot has an arm. Necessary for defining the joints that the forward
-                        position controller should use.
+        has_arm (bool): Whether or not your robot has an arm. Necessary for defining the joints that the controllers
+                        should use.
 
     Returns:
         str: Path to controllers config file to use
@@ -43,14 +49,15 @@ def create_controllers_config(spot_name: str, has_arm: bool) -> None:
     if spot_name:
         with open(template_filename, "r") as template_file:
             config = yaml.safe_load(template_file)
-            forward_position_controller_joints = config["forward_position_controller"]["ros__parameters"]["joints"]
-            config["forward_position_controller"]["ros__parameters"]["joints"] = [
-                f"{spot_name}/{joint}" for joint in forward_position_controller_joints
-            ]
             config[f"{spot_name}/controller_manager"] = config["controller_manager"]
             del config["controller_manager"]
-            config[f"{spot_name}/forward_position_controller"] = config["forward_position_controller"]
-            del config["forward_position_controller"]
+            keys_to_namespace = ["forward_position_controller", "forward_state_controller"]
+
+            for key in keys_to_namespace:
+                key_joints = config[key]["ros__parameters"]["joints"]
+                config[key]["ros__parameters"]["joints"] = [f"{spot_name}/{joint}" for joint in key_joints]
+                config[f"{spot_name}/{key}"] = config[key]
+                del config[key]
 
         with NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as out_file:
             yaml.dump(config, out_file)
@@ -93,17 +100,17 @@ def create_rviz_config(spot_name: str) -> str:
 def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     hardware_interface: str = LaunchConfiguration("hardware_interface").perform(context)
     controllers_config: str = LaunchConfiguration("controllers_config").perform(context)
-    mock_has_arm: bool = IfCondition(LaunchConfiguration("mock_has_arm")).evaluate(context)
+    mock_arm: bool = IfCondition(LaunchConfiguration("mock_arm")).evaluate(context)
     spot_name: str = LaunchConfiguration("spot_name").perform(context)
+    config_file: str = LaunchConfiguration("config_file").perform(context)
 
-    # If connected to a physical robot, query if it has an arm. Otherwise, use the value in mock_has_arm.
+    # If connected to a physical robot, query if it has an arm. Otherwise, use the value in mock_arm.
     if hardware_interface == "robot":
-        config_file = LaunchConfiguration("config_file").perform(context)
-        has_arm = spot_has_arm(config_file_path=config_file, spot_name="")
+        arm = spot_has_arm(config_file_path=config_file, spot_name="")
         username, password, hostname = get_login_parameters(config_file)[:3]
         login_params = f" hostname:={hostname} username:={username} password:={password}"
     else:
-        has_arm = mock_has_arm
+        arm = mock_arm
         login_params = ""
 
     tf_prefix = f"{spot_name}/" if spot_name else ""
@@ -113,9 +120,9 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
-            PathJoinSubstitution([FindPackageShare(THIS_PACKAGE), "xacro", "spot.urdf.xacro"]),
-            " has_arm:=",
-            str(has_arm),
+            PathJoinSubstitution([FindPackageShare("spot_description"), "urdf", "spot.urdf.xacro"]),
+            " add_ros2_control_tag:=True arm:=",
+            str(arm),
             " tf_prefix:=",
             tf_prefix,
             " hardware_interface_type:=",
@@ -128,8 +135,7 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     # If no controller config file is selected, use the appropriate default. Else, just use the yaml that is passed in.
     if controllers_config == "":
         # Generate spot_default_controllers.yaml depending on namespace and whether the robot has an arm.
-        create_controllers_config(spot_name, has_arm)
-        controllers_config = create_controllers_config(spot_name, has_arm)
+        controllers_config = create_controllers_config(spot_name, arm)
 
     # Add nodes
     ld.add_action(
@@ -139,6 +145,8 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             output="both",
             parameters=[robot_description, controllers_config],
             namespace=spot_name,
+            # Remap joint states so it doesn't collide with high level joint states.
+            remappings=[(f"/{tf_prefix}joint_states", f"/{tf_prefix}low_level/joint_states")],
         )
     )
     ld.add_action(
@@ -148,6 +156,7 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             output="both",
             parameters=[robot_description],
             namespace=spot_name,
+            remappings=[(f"/{tf_prefix}joint_states", f"/{tf_prefix}low_level/joint_states")],
         )
     )
     ld.add_action(
@@ -178,6 +187,44 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             namespace=spot_name,
         )
     )
+    # Finally, launch extra nodes for state and image publishing if we are running on a robot.
+    if hardware_interface == "robot":
+        # launch image publishers
+        ld.add_action(
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [
+                        PathJoinSubstitution(
+                            [FindPackageShare("spot_driver"), "launch", "spot_image_publishers.launch.py"]
+                        )
+                    ]
+                ),
+                launch_arguments={
+                    key: LaunchConfiguration(key) for key in ["config_file", "spot_name"] + IMAGE_PUBLISHER_ARGS
+                }.items(),
+                condition=IfCondition(LaunchConfiguration("launch_image_publishers")),
+            )
+        )
+        # launch state publisher node (useful for publishing odom & other statuses)
+        ld.add_action(
+            Node(
+                package="spot_driver",
+                executable="state_publisher_node",
+                output="screen",
+                parameters=[config_file, {"spot_name": spot_name}],
+                namespace=spot_name,
+            )
+        )
+        # launch object sync node (for fiducials)
+        ld.add_action(
+            Node(
+                package="spot_driver",
+                executable="object_synchronizer_node",
+                output="screen",
+                parameters=[config_file, {"spot_name": spot_name}],
+                namespace=spot_name,
+            )
+        )
     return
 
 
@@ -213,18 +260,17 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "robot_controller",
                 default_value="forward_position_controller",
-                choices=["forward_position_controller"],
-                description="Robot controller to start. Must match an entry in controller_config.",
+                description="Robot controller to start. Must match an entry in controllers_config.",
             ),
             DeclareLaunchArgument(
-                "mock_has_arm",
+                "mock_arm",
                 default_value="false",
                 choices=["True", "true", "False", "false"],
                 description="If in hardware_interface:=mock mode, whether or not the mocked robot has an arm.",
             ),
             DeclareLaunchArgument(
                 "launch_rviz",
-                default_value="True",
+                default_value="true",
                 choices=["True", "true", "False", "false"],
                 description="Flag to enable rviz.",
             ),
@@ -233,7 +279,14 @@ def generate_launch_description():
                 default_value="",
                 description="Name of the Spot that will be used as a namespace.",
             ),
+            DeclareLaunchArgument(
+                "launch_image_publishers",
+                default_value="true",
+                choices=["True", "true", "False", "false"],
+                description="Choose whether to launch the image publishers.",
+            ),
         ]
+        + declare_image_publisher_args()
     )
     # Add nodes to launch description
     ld.add_action(OpaqueFunction(function=launch_setup, args=[ld]))
