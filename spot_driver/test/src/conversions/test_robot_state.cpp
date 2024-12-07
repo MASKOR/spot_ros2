@@ -335,7 +335,7 @@ TEST(RobotStateConversions, TestGetTfInverted) {
   EXPECT_THAT(transform.transform, GeometryMsgsTransformEq(-1.0, -2.0, -3.0, 1.0, 0.0, 0.0, 0.0));
 }
 
-TEST(RobotStateConversions, TestGetOdomTwist) {
+TEST(RobotStateConversions, TestGetOdomTwistNoTransformsSnapshot) {
   // GIVEN a RobotState that contains info about the velocity of the body in the odom frame
   ::bosdyn::api::RobotState robot_state;
   google::protobuf::Timestamp timestamp;
@@ -357,13 +357,119 @@ TEST(RobotStateConversions, TestGetOdomTwist) {
   clock_skew.set_seconds(1);
 
   // WHEN we create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
+
+  // THEN this fails as there is no TransformsSnapshot
+  ASSERT_THAT(out.has_value(), IsFalse());
+}
+
+TEST(RobotStateConversions, TestGetOdomTwistBodyAtOdom) {
+  // GIVEN a RobotState that contains info about the velocity of the body in the odom frame
+  ::bosdyn::api::RobotState robot_state;
+  google::protobuf::Timestamp timestamp;
+  timestamp.set_seconds(99);
+  timestamp.set_nanos(0);
+  addAcquisitionTimestamp(robot_state.mutable_kinematic_state(), timestamp);
+
+  // GIVEN the odom frame is the root of the frame tree
+  addRootFrame(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "odom");
+  // GIVEN the body frame is at the odom frame
+  addTransform(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "body", "odom", 0.0, 0.0, 0.0, 1.0,
+               0.0, 0.0, 0.0);
+
+  auto* velocity_linear = robot_state.mutable_kinematic_state()->mutable_velocity_of_body_in_odom()->mutable_linear();
+  velocity_linear->set_x(1.0);
+  velocity_linear->set_y(2.0);
+  velocity_linear->set_z(3.0);
+  auto* velocity_angular = robot_state.mutable_kinematic_state()->mutable_velocity_of_body_in_odom()->mutable_angular();
+  velocity_angular->set_x(1.0);
+  velocity_angular->set_y(2.0);
+  velocity_angular->set_z(3.0);
+
+  // GIVEN some nominal clock skew
+  google::protobuf::Duration clock_skew;
+  clock_skew.set_seconds(1);
+
+  // WHEN we create a TwistWithCovarianceStamped ROS message
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN this succeeds
   ASSERT_THAT(out.has_value(), IsTrue());
 
-  // THEN the output twist matches the velocity in the robot state
+  // THEN the output twist matches the velocity in the robot state.
   EXPECT_THAT(out->twist.twist, GeometryMsgsTwistEq(1.0, 2.0, 3.0, 1.0, 2.0, 3.0));
+  EXPECT_THAT(out->header, ClockSkewIsAppliedToHeader(timestamp, clock_skew));
+}
+
+TEST(RobotStateConversions, TestGetOdomTwistLinearTransformationLinearVelocity) {
+  // GIVEN a RobotState that contains info about the velocity of the body in the odom frame
+  ::bosdyn::api::RobotState robot_state;
+  google::protobuf::Timestamp timestamp;
+  timestamp.set_seconds(99);
+  timestamp.set_nanos(0);
+  addAcquisitionTimestamp(robot_state.mutable_kinematic_state(), timestamp);
+
+  // GIVEN the odom frame is the root of the frame tree
+  addRootFrame(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "odom");
+  // GIVEN the body frame is linearly translated 2m forward in the x direction
+  addTransform(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "body", "odom", 2.0, 0.0, 0.0, 1.0,
+               0.0, 0.0, 0.0);
+
+  auto* velocity_linear = robot_state.mutable_kinematic_state()->mutable_velocity_of_body_in_odom()->mutable_linear();
+  velocity_linear->set_x(1.0);
+  velocity_linear->set_y(0.0);
+  velocity_linear->set_z(0.0);
+
+  // GIVEN some nominal clock skew
+  google::protobuf::Duration clock_skew;
+  clock_skew.set_seconds(1);
+
+  // WHEN we create a TwistWithCovarianceStamped ROS message
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
+
+  // THEN this succeeds
+  ASSERT_THAT(out.has_value(), IsTrue());
+
+  // THEN the output twist matches the velocity in the robot state.
+  EXPECT_THAT(out->twist.twist, GeometryMsgsTwistEq(1.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+  EXPECT_THAT(out->header, ClockSkewIsAppliedToHeader(timestamp, clock_skew));
+}
+
+TEST(RobotStateConversions, TestGetOdomTwistAngularTransformationLinearVelocity) {
+  // GIVEN a RobotState that contains info about the velocity of the body in the odom frame
+  ::bosdyn::api::RobotState robot_state;
+  google::protobuf::Timestamp timestamp;
+  timestamp.set_seconds(99);
+  timestamp.set_nanos(0);
+  addAcquisitionTimestamp(robot_state.mutable_kinematic_state(), timestamp);
+
+  // GIVEN the odom frame is the root of the frame tree
+  addRootFrame(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "odom");
+  // GIVEN the body frame is rotated by 180 degrees from the odom frame (quaternion 0 0 0 1)
+  addTransform(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "body", "odom", 0.0, 0.0, 0.0, 0.0,
+               0.0, 0.0, 1.0);
+
+  auto* velocity_linear = robot_state.mutable_kinematic_state()->mutable_velocity_of_body_in_odom()->mutable_linear();
+  velocity_linear->set_x(1.0);
+  velocity_linear->set_y(0.0);
+  velocity_linear->set_z(0.0);
+
+  // GIVEN some nominal clock skew
+  google::protobuf::Duration clock_skew;
+  clock_skew.set_seconds(1);
+
+  // WHEN we create a TwistWithCovarianceStamped ROS message
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
+
+  // THEN this succeeds
+  ASSERT_THAT(out.has_value(), IsTrue());
+
+  // THEN the output twist matches the velocity in the robot state.
+  EXPECT_THAT(out->twist.twist, GeometryMsgsTwistEq(-1.0, 0.0, 0.0, 0.0, 0.0, 0.0));
   EXPECT_THAT(out->header, ClockSkewIsAppliedToHeader(timestamp, clock_skew));
 }
 
@@ -377,12 +483,14 @@ TEST(RobotStateConversions, TestGetOdomTwistNoBodyVelocityInRobotState) {
   clock_skew.set_seconds(1);
 
   // WHEN we attempt to create a TwistWithCovarianceStamped ROS message
-  const auto out = getOdomTwist(robot_state, clock_skew);
+  const bool using_vision = false;
+  const auto out = getOdomTwist(robot_state, clock_skew, using_vision);
 
   // THEN no message is output
   ASSERT_THAT(out.has_value(), IsFalse());
 }
 
+// TODO(khughes): Fix this test
 TEST(RobotStateConversions, TestGetOdomInOdomFrame) {
   // GIVEN some nominal clock skew
   google::protobuf::Duration clock_skew;
@@ -423,6 +531,7 @@ TEST(RobotStateConversions, TestGetOdomInOdomFrame) {
   EXPECT_THAT(out->twist.twist, GeometryMsgsTwistEq(1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
 }
 
+// TODO(khughes): Fix this test
 TEST(RobotStateConversions, TestGetOdomInVisionFrame) {
   // GIVEN some nominal clock skew
   google::protobuf::Duration clock_skew;
@@ -435,7 +544,7 @@ TEST(RobotStateConversions, TestGetOdomInVisionFrame) {
   timestamp.set_seconds(99);
   timestamp.set_nanos(0);
   addAcquisitionTimestamp(robot_state.mutable_kinematic_state(), timestamp);
-  addBodyVelocityOdom(robot_state.mutable_kinematic_state(), 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+  addBodyVelocityVision(robot_state.mutable_kinematic_state(), 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
   addRootFrame(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "vision");
   addTransform(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "body", "vision", 1.0, 2.0, 3.0,
                1.0, 0.0, 0.0, 0.0);
@@ -497,7 +606,7 @@ TEST(RobotStateConversions, TestGetOdomMissingBodyVelocityOdom) {
               Eq(::bosdyn::api::ValidateFrameTreeSnapshotStatus::VALID));
 
   // WHEN we try to create an Odometry message from the RobotState
-  const auto out = getOdom(robot_state, clock_skew, "prefix/", true);
+  const auto out = getOdom(robot_state, clock_skew, "prefix/", false);
 
   // THEN this does not succeed
   ASSERT_THAT(out.has_value(), IsFalse());
@@ -533,7 +642,7 @@ TEST(RobotStateConversions, TestGetOdomInvalidTransformSnapshot) {
   timestamp.set_seconds(99);
   timestamp.set_nanos(0);
   addAcquisitionTimestamp(robot_state.mutable_kinematic_state(), timestamp);
-  addBodyVelocityOdom(robot_state.mutable_kinematic_state(), 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+  addBodyVelocityVision(robot_state.mutable_kinematic_state(), 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
   addTransform(robot_state.mutable_kinematic_state()->mutable_transforms_snapshot(), "body", "vision", 1.0, 2.0, 3.0,
                1.0, 0.0, 0.0, 0.0);
   ASSERT_THAT(bosdyn::api::ValidateFrameTreeSnapshot(robot_state.kinematic_state().transforms_snapshot()),
