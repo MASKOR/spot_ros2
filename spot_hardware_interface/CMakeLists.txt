@@ -14,11 +14,13 @@ endif()
 # Dependencies
 find_package(ament_cmake REQUIRED)
 set(THIS_PACKAGE_INCLUDE_DEPENDS
+  bondcpp
   hardware_interface
   bosdyn_cmake_module
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  spot_msgs
 )
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
@@ -38,6 +40,7 @@ add_library(
   spot_hardware_interface
   SHARED
   src/spot_hardware_interface.cpp
+  src/spot_leasing_interface.cpp
 )
 target_compile_features(spot_hardware_interface PUBLIC cxx_std_20)
 target_include_directories(spot_hardware_interface PUBLIC
