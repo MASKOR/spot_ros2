@@ -99,6 +99,16 @@ hardware_interface::CallbackReturn SpotHardware::on_init(const hardware_interfac
     certificate_.reset();
   }
 
+  if (info_.hardware_parameters["leasing"] == "direct") {
+    leasing_mode_ = LeasingMode::DIRECT;
+  } else if (info_.hardware_parameters["leasing"] == "proxied") {
+    leasing_mode_ = LeasingMode::PROXIED;
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Got %s for leasing mode, expected 'direct' or 'proxied'",
+                 info_.hardware_parameters["leasing"].c_str());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
   hw_states_.resize(info_.joints.size() * interfaces_per_joint_, std::numeric_limits<double>::quiet_NaN());
   hw_commands_.resize(info_.joints.size() * interfaces_per_joint_, std::numeric_limits<double>::quiet_NaN());
 
@@ -193,6 +203,14 @@ hardware_interface::CallbackReturn SpotHardware::on_configure(const rclcpp_lifec
   if (!authenticate_robot(hostname_, username_, password_, port_, certificate_)) {
     return hardware_interface::CallbackReturn::ERROR;
   }
+  switch (leasing_mode_) {
+    case LeasingMode::PROXIED:
+      leasing_interface_ = std::make_unique<ProxiedLeasingInterface>(robot_.get());
+      break;
+    case LeasingMode::DIRECT:
+      leasing_interface_ = std::make_unique<DirectLeasingInterface>(robot_.get());
+      break;
+  }
   if (!start_time_sync()) {
     return hardware_interface::CallbackReturn::ERROR;
   }
@@ -272,6 +290,7 @@ hardware_interface::CallbackReturn SpotHardware::on_shutdown(const rclcpp_lifecy
   if (!power_off()) {
     return hardware_interface::CallbackReturn::ERROR;
   }
+  leasing_interface_.reset();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -406,22 +425,13 @@ bool SpotHardware::check_estop() {
 }
 
 bool SpotHardware::get_lease() {
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Getting Lease");
-  // First create a lease client.
-  ::bosdyn::client::Result<::bosdyn::client::LeaseClient*> lease_client_resp =
-      robot_->EnsureServiceClient<::bosdyn::client::LeaseClient>();
-  if (!lease_client_resp) {
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Could not create lease client");
+  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Taking lease...");
+  auto lease = leasing_interface_->AcquireLease("body");
+  if (!lease) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("SpotHardware"), lease.error());
     return false;
   }
-  lease_client_ = lease_client_resp.response;
-  // Then acquire the lease for the body.
-  const auto lease_res = lease_client_->AcquireLease("body");
-  if (!lease_res) {
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Could not acquire body lease");
-    return false;
-  }
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Lease acquired!!");
+  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Lease taken!!");
   return true;
 }
 
@@ -611,12 +621,13 @@ void SpotHardware::send_command(const JointStates& joint_commands) {
 }
 
 void SpotHardware::release_lease() {
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Releasing Lease");
-  bosdyn::api::ReturnLeaseRequest msg;
-  auto lease_result = robot_->GetWallet()->GetOwnedLeaseProto("body");
-  msg.mutable_lease()->CopyFrom(lease_result.response);
-  auto resp = lease_client_->ReturnLease(msg);
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Return lease status: %s", resp.status.DebugString().c_str());
+  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Returning lease...");
+  auto lease = leasing_interface_->ReturnLease("body");
+  if (!lease) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("SpotHardware"), lease.error());
+    return;
+  }
+  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Lease returned!!");
 }
 
 }  // namespace spot_hardware_interface
