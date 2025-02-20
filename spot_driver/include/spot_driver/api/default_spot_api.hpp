@@ -7,6 +7,7 @@
 #include <bosdyn/client/robot/robot.h>
 #include <bosdyn/client/sdk/client_sdk.h>
 
+#include <spot_driver/api/lease_client_interface.hpp>
 #include <spot_driver/api/state_client_interface.hpp>
 #include <spot_driver/api/time_sync_api.hpp>
 #include <spot_driver/api/world_object_client_interface.hpp>
@@ -32,6 +33,7 @@ class DefaultSpotApi : public SpotApi {
   [[nodiscard]] std::shared_ptr<KinematicApi> kinematicInterface() const override;
   [[nodiscard]] std::shared_ptr<ImageClientInterface> image_client_interface() const override;
   [[nodiscard]] std::shared_ptr<StateClientInterface> stateClientInterface() const override;
+  [[nodiscard]] std::shared_ptr<LeaseClientInterface> leaseClientInterface() const override;
   [[nodiscard]] std::shared_ptr<TimeSyncApi> timeSyncInterface() const override;
   [[nodiscard]] std::shared_ptr<WorldObjectClientInterface> worldObjectClientInterface() const override;
 
@@ -41,6 +43,7 @@ class DefaultSpotApi : public SpotApi {
   std::shared_ptr<KinematicApi> kinematic_interface_;
   std::shared_ptr<ImageClientInterface> image_client_interface_;
   std::shared_ptr<StateClientInterface> state_client_interface_;
+  std::shared_ptr<LeaseClientInterface> lease_client_interface_;
   std::shared_ptr<TimeSyncApi> time_sync_api_;
   std::shared_ptr<WorldObjectClientInterface> world_object_client_interface_;
   std::string robot_name_;

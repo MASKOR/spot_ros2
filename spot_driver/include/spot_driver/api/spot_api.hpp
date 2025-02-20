@@ -3,6 +3,7 @@
 #pragma once
 
 #include <spot_driver/api/kinematic_api.hpp>
+#include <spot_driver/api/lease_client_interface.hpp>
 #include <spot_driver/api/state_client_interface.hpp>
 #include <spot_driver/api/time_sync_api.hpp>
 #include <spot_driver/api/world_object_client_interface.hpp>
@@ -44,6 +45,7 @@ class SpotApi {
    * @return A shared_ptr to an instance of StateClientInterface which is owned by this object.
    */
   virtual std::shared_ptr<StateClientInterface> stateClientInterface() const = 0;
+  [[nodiscard]] virtual std::shared_ptr<LeaseClientInterface> leaseClientInterface() const = 0;
   virtual std::shared_ptr<TimeSyncApi> timeSyncInterface() const = 0;
   [[nodiscard]] virtual std::shared_ptr<WorldObjectClientInterface> worldObjectClientInterface() const = 0;
 };

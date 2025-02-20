@@ -15,6 +15,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
+  bondcpp
   bosdyn_api_msgs
   bosdyn_cmake_module
   bosdyn_spot_api_msgs
@@ -50,6 +51,7 @@ find_package(OpenCV 4 REQUIRED)
 add_library(spot_api
   src/api/default_kinematic_api.cpp
   src/api/default_image_client.cpp
+  src/api/default_lease_client.cpp
   src/api/default_spot_api.cpp
   src/api/default_state_client.cpp
   src/api/default_time_sync_api.cpp
@@ -71,6 +73,9 @@ add_library(spot_api
   src/interfaces/rclcpp_tf_broadcaster_interface.cpp
   src/interfaces/rclcpp_tf_listener_interface.cpp
   src/interfaces/rclcpp_wall_timer_interface.cpp
+  src/lease/lease_manager.cpp
+  src/lease/lease_manager_node.cpp
+  src/lease/lease_middleware_handle.cpp
   src/kinematic/kinematic_node.cpp
   src/kinematic/kinematic_service.cpp
   src/kinematic/kinematic_middleware_handle.cpp
@@ -144,6 +149,34 @@ rclcpp_components_register_node(
   state_publisher_component
   PLUGIN "spot_ros2::StatePublisherNode"
   EXECUTABLE state_publisher_node_component)
+
+###
+# Spot lease manager
+###
+
+# Create executable to allow running LeaseManagerNode directly as a ROS 2 node
+add_executable(lease_manager_node src/lease/lease_manager_node_main.cpp)
+target_link_libraries(lease_manager_node PUBLIC spot_api)
+target_include_directories(lease_manager_node
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Register a composable node to allow loading StatePublisherNode in a component container
+add_library(lease_manager_component SHARED src/lease/lease_manager_component.cpp)
+target_include_directories(lease_manager_component
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(lease_manager_component PUBLIC spot_api)
+ament_target_dependencies(lease_manager_component PUBLIC rclcpp_components)
+
+rclcpp_components_register_node(
+  lease_manager_component
+  PLUGIN "spot_ros2::LeaseManagerNode"
+  EXECUTABLE lease_manager_node_component)
 
 ###
 # Spot IK

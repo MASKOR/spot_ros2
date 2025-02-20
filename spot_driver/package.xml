@@ -11,6 +11,7 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
+  <depend>bondcpp</depend>
   <depend>bosdyn</depend>
   <depend>bosdyn_cmake_module</depend>
   <depend>bosdyn_msgs</depend>

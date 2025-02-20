@@ -118,6 +118,18 @@ ament_add_gmock(test_common_conversions
 )
 target_link_libraries(test_common_conversions spot_api)
 
+# # test_lease_manager
+
+ament_add_gmock(test_lease_manager
+    src/lease/test_lease_manager.cpp
+)
+target_include_directories(test_lease_manager
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(test_lease_manager spot_api)
+
 # test_kinematic_service
 
 ament_add_gmock(test_kinematic_service

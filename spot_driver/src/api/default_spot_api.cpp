@@ -5,6 +5,7 @@
 #include <memory>
 #include <spot_driver/api/default_image_client.hpp>
 #include <spot_driver/api/default_kinematic_api.hpp>
+#include <spot_driver/api/default_lease_client.hpp>
 #include <spot_driver/api/default_spot_api.hpp>
 #include <spot_driver/api/default_state_client.hpp>
 #include <spot_driver/api/default_time_sync_api.hpp>
@@ -85,6 +86,14 @@ tl::expected<void, std::string> DefaultSpotApi::authenticate(const std::string& 
   }
   state_client_interface_ = std::make_shared<DefaultStateClient>(robot_state_result.response);
 
+  // Lease API.
+  const auto lease_client_result = robot_->EnsureServiceClient<::bosdyn::client::LeaseClient>(
+      ::bosdyn::client::LeaseClient::GetDefaultServiceName());
+  if (!lease_client_result.status) {
+    return tl::make_unexpected("Failed to create Lease client.");
+  }
+  lease_client_interface_ = std::make_shared<DefaultLeaseClient>(lease_client_result.response);
+
   // Kinematic API.
   const auto kinematic_api_result = robot_->EnsureServiceClient<::bosdyn::client::InverseKinematicsClient>(
       ::bosdyn::client::InverseKinematicsClient::GetDefaultServiceName());
@@ -133,6 +142,10 @@ std::shared_ptr<ImageClientInterface> DefaultSpotApi::image_client_interface() c
 
 std::shared_ptr<StateClientInterface> DefaultSpotApi::stateClientInterface() const {
   return state_client_interface_;
+}
+
+std::shared_ptr<LeaseClientInterface> DefaultSpotApi::leaseClientInterface() const {
+  return lease_client_interface_;
 }
 
 std::shared_ptr<KinematicApi> DefaultSpotApi::kinematicInterface() const {

@@ -1,0 +1,6 @@
+string client_name
+string resource_name
+---
+bool success
+string message
+bosdyn_api_msgs/Lease lease
