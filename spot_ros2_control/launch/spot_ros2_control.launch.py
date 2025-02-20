@@ -164,12 +164,13 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             remappings=[(f"/{tf_prefix}joint_states", f"/{tf_prefix}low_level/joint_states")],
         )
     )
+    # Joint states get published at 333 Hz, so set the TF update rate to that.
     ld.add_action(
         Node(
             package="robot_state_publisher",
             executable="robot_state_publisher",
             output="both",
-            parameters=[robot_description],
+            parameters=[robot_description, {"publish_frequency": 333.0}],
             namespace=spot_name,
             remappings=[(f"/{tf_prefix}joint_states", f"/{tf_prefix}low_level/joint_states")],
         )
