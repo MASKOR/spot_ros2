@@ -5,9 +5,8 @@ from tempfile import NamedTemporaryFile
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
     FindExecutable,
@@ -19,11 +18,8 @@ from launch_ros.substitutions import FindPackageShare
 from synchros2.launch.actions import DeclareBooleanLaunchArgument
 
 from spot_driver.launch.spot_launch_helpers import (
-    IMAGE_PUBLISHER_ARGS,
     declare_image_publisher_args,
-    get_login_parameters,
     get_ros_param_dict,
-    spot_has_arm,
 )
 
 THIS_PACKAGE = "spot_ros2_control"
@@ -113,8 +109,8 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
 
     # If running on robot, query if it has an arm, and parse config for login parameters and gains
     if hardware_interface == "robot":
-        arm = spot_has_arm(config_file_path=config_file, spot_name="")
-        username, password, hostname = get_login_parameters(config_file)[:3]
+        arm = True  # spot_has_arm(config_file_path=config_file, spot_name="")
+        username, password, hostname = "aaaaa", "bbbbb", "ccccc"  # get_login_parameters(config_file)[:3]
         login_params = f" hostname:={hostname} username:={username} password:={password} "
         param_dict = get_ros_param_dict(config_file)
         if "k_q_p" in param_dict:
@@ -202,45 +198,45 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             namespace=spot_name,
         )
     )
-    # Finally, launch extra nodes for state and image publishing if we are running on a robot.
-    if hardware_interface == "robot":
-        # launch image publishers
-        ld.add_action(
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    [
-                        PathJoinSubstitution(
-                            [FindPackageShare("spot_driver"), "launch", "spot_image_publishers.launch.py"]
-                        )
-                    ]
-                ),
-                launch_arguments={
-                    key: LaunchConfiguration(key) for key in ["config_file", "spot_name"] + IMAGE_PUBLISHER_ARGS
-                }.items(),
-                condition=IfCondition(LaunchConfiguration("launch_image_publishers")),
-            )
-        )
-        # launch state publisher node (useful for publishing odom & other statuses)
-        ld.add_action(
-            Node(
-                package="spot_driver",
-                executable="state_publisher_node",
-                output="screen",
-                parameters=[config_file, {"spot_name": spot_name}],
-                namespace=spot_name,
-            )
-        )
-        # launch object sync node (for fiducials)
-        ld.add_action(
-            Node(
-                package="spot_driver",
-                executable="object_synchronizer_node",
-                output="screen",
-                parameters=[config_file, {"spot_name": spot_name}],
-                namespace=spot_name,
-            )
-        )
-    return
+    # # Finally, launch extra nodes for state and image publishing if we are running on a robot.
+    # if hardware_interface == "robot":
+    #     # launch image publishers
+    #     ld.add_action(
+    #         IncludeLaunchDescription(
+    #             PythonLaunchDescriptionSource(
+    #                 [
+    #                     PathJoinSubstitution(
+    #                         [FindPackageShare("spot_driver"), "launch", "spot_image_publishers.launch.py"]
+    #                     )
+    #                 ]
+    #             ),
+    #             launch_arguments={
+    #                 key: LaunchConfiguration(key) for key in ["config_file", "spot_name"] + IMAGE_PUBLISHER_ARGS
+    #             }.items(),
+    #             condition=IfCondition(LaunchConfiguration("launch_image_publishers")),
+    #         )
+    #     )
+    #     # launch state publisher node (useful for publishing odom & other statuses)
+    #     ld.add_action(
+    #         Node(
+    #             package="spot_driver",
+    #             executable="state_publisher_node",
+    #             output="screen",
+    #             parameters=[config_file, {"spot_name": spot_name}],
+    #             namespace=spot_name,
+    #         )
+    #     )
+    #     # launch object sync node (for fiducials)
+    #     ld.add_action(
+    #         Node(
+    #             package="spot_driver",
+    #             executable="object_synchronizer_node",
+    #             output="screen",
+    #             parameters=[config_file, {"spot_name": spot_name}],
+    #             namespace=spot_name,
+    #         )
+    #     )
+    # return
 
 
 def generate_launch_description():

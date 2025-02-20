@@ -62,6 +62,19 @@ struct JointStates {
   std::vector<float> load;      // in Nm
 };
 
+struct JointCommands {
+  // This struct is used to hold a set of joint commands of the robot.
+  // The first 12 entries will be the leg commands in the following order:
+  // FL hip x, FL hip y, FL knee, FR hip x, FR hip y, FR knee, RL hip x, RL hip y, RL knee, RR hip x, RR hip y, RR knee
+  // And, if the robot has an arm, the 7 arm commands follow in this order:
+  // sh0, sh1, el0, el1, wr0, wr1, f1x
+  std::vector<float> position;  // in rad
+  std::vector<float> velocity;  // in rad/s
+  std::vector<float> load;      // in Nm
+  std::vector<float> k_q_p;
+  std::vector<float> k_qd_p;
+};
+
 class StateStreamingHandler {
  public:
   /**
@@ -119,9 +132,13 @@ class SpotHardware : public hardware_interface::SystemInterface {
   hardware_interface::return_type write(const rclcpp::Time& time, const rclcpp::Duration& period) override;
 
  private:
-  // TODO(khughes): Hard coding this for now, but there should be a cleaner way to do this.
-  // The 3 interfaces are position, velocity, and effort.
-  static constexpr size_t interfaces_per_joint_ = 3;
+  // constants used for expanding the available command interfaces
+  const std::string HW_IF_K_Q_P = "k_q_p";
+  const std::string HW_IF_K_QD_P = "k_qd_p";
+  // The 3 command interfaces are position, velocity, effort, k_q_p, and k_qd_p.
+  static constexpr size_t command_interfaces_per_joint_ = 5;
+  // The 3 state interfaces are position, velocity, and effort.
+  static constexpr size_t state_interfaces_per_joint_ = 3;
   size_t njoints_;
 
   // Login info
@@ -146,7 +163,7 @@ class SpotHardware : public hardware_interface::SystemInterface {
   // Holds joint states of the robot received from the BD SDK
   JointStates joint_states_;
   // Holds joint commands for the robot to send to BD SDK
-  JointStates command_states_;
+  JointCommands command_states_;
 
   // Thread for reading the state of the robot.
   std::jthread state_thread_;
@@ -235,7 +252,7 @@ class SpotHardware : public hardware_interface::SystemInterface {
    * @brief Send a joint command to the robot.
    * @param joint_commands contains position, velocity, and load
    */
-  void send_command(const JointStates& joint_commands);
+  void send_command(const JointCommands& joint_commands);
 
   // Vectors for storing the commands and states for the robot.
   std::vector<double> hw_commands_;
