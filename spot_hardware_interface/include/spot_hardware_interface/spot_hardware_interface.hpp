@@ -163,7 +163,7 @@ class SpotHardware : public hardware_interface::SystemInterface {
   // Holds joint states of the robot received from the BD SDK
   JointStates joint_states_;
   // Holds joint commands for the robot to send to BD SDK
-  JointCommands command_states_;
+  JointCommands joint_commands_;
 
   // Thread for reading the state of the robot.
   std::jthread state_thread_;

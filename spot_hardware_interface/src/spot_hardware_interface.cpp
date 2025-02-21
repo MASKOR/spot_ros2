@@ -214,9 +214,9 @@ hardware_interface::CallbackReturn SpotHardware::on_activate(const rclcpp_lifecy
   }
 
   // Set up command_states struct, initialized to zeros
-  command_states_.position = std::vector<float>(info_.joints.size(), 0.0);
-  command_states_.velocity = std::vector<float>(info_.joints.size(), 0.0);
-  command_states_.load = std::vector<float>(info_.joints.size(), 0.0);
+  joint_commands_.position = std::vector<float>(info_.joints.size(), 0.0);
+  joint_commands_.velocity = std::vector<float>(info_.joints.size(), 0.0);
+  joint_commands_.load = std::vector<float>(info_.joints.size(), 0.0);
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -317,13 +317,13 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
   }
 
   for (std::size_t i = 0; i < info_.joints.size(); ++i) {
-    command_states_.position.at(i) = hw_commands_[command_interfaces_per_joint_ * i];
-    command_states_.velocity.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 1];
-    command_states_.load.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 2];
-    command_states_.k_q_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 3];
-    command_states_.k_qd_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 4];
+    joint_commands_.position.at(i) = hw_commands_[command_interfaces_per_joint_ * i];
+    joint_commands_.velocity.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 1];
+    joint_commands_.load.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 2];
+    joint_commands_.k_q_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 3];
+    joint_commands_.k_qd_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 4];
   }
-  send_command(command_states_);
+  send_command(joint_commands_);
 
   return hardware_interface::return_type::OK;
 }
