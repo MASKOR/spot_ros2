@@ -309,6 +309,13 @@ hardware_interface::return_type SpotHardware::read(const rclcpp::Time& /*time*/,
       hw_commands_[command_interfaces_per_joint_ * i + 1] = hw_states_[state_interfaces_per_joint_ * i + 1];
       hw_commands_[command_interfaces_per_joint_ * i + 2] = hw_states_[state_interfaces_per_joint_ * i + 2];
       // this does NOT fill out kqp and kqdp commands (would be hw_commands[i+3/4]) as they are not in state interface
+      const auto& joint = info_.joints.at(i);
+      hw_commands_[command_interfaces_per_joint_ * i + 3] = std::stof(joint.command_interfaces.at(3).initial_value);
+      hw_commands_[command_interfaces_per_joint_ * i + 4] = std::stof(joint.command_interfaces.at(4).initial_value);
+    }
+    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
+    for (const auto& c : hw_commands_) {
+      RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
     }
     init_state_ = true;
   }
@@ -323,10 +330,10 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
     return hardware_interface::return_type::ERROR;
   }
 
-  RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
-  for (const auto& c : hw_commands_) {
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
-  }
+  // RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
+  // for (const auto& c : hw_commands_) {
+  //   RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
+  // }
 
   for (std::size_t i = 0; i < info_.joints.size(); ++i) {
     joint_commands_.position.at(i) = hw_commands_[command_interfaces_per_joint_ * i];
