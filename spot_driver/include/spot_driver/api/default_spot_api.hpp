@@ -23,9 +23,9 @@ class DefaultSpotApi : public SpotApi {
   explicit DefaultSpotApi(const std::string& sdk_client_name, const std::chrono::seconds timesync_timeout,
                           const std::optional<std::string>& certificate = std::nullopt);
 
-  [[nodiscard]] tl::expected<void, std::string> createRobot(const std::string& robot_name,
-                                                            const std::string& ip_address,
-                                                            const std::optional<int>& port = std::nullopt) override;
+  [[nodiscard]] tl::expected<void, std::string> createRobot(const std::string& ip_address,
+                                                            const std::optional<int>& port = std::nullopt,
+                                                            const std::string& frame_prefix = "") override;
   [[nodiscard]] tl::expected<void, std::string> authenticate(const std::string& username,
                                                              const std::string& password) override;
   [[nodiscard]] tl::expected<bool, std::string> hasArm() const override;
@@ -43,7 +43,7 @@ class DefaultSpotApi : public SpotApi {
   std::shared_ptr<StateClientInterface> state_client_interface_;
   std::shared_ptr<TimeSyncApi> time_sync_api_;
   std::shared_ptr<WorldObjectClientInterface> world_object_client_interface_;
-  std::string robot_name_;
+  std::string frame_prefix_;
   const std::chrono::seconds timesync_timeout_;
 };
 }  // namespace spot_ros2

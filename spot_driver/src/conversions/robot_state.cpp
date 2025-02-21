@@ -15,6 +15,25 @@
 
 namespace spot_ros2 {
 
+std::string stripPrefix(const std::string& input, const std::string& prefix) {
+  const std::size_t prefix_index = input.find(prefix);
+  if (prefix_index == std::string::npos) {
+    // The input does not contain the prefix
+    return input;
+  }
+  if (prefix_index > 0) {
+    // The input does contain the prefix substring, but it does not begin at the start of the input.
+    // Return the unmodified input.
+    return input;
+  }
+
+  return input.substr(prefix.size());
+}
+
+std::string prependPrefix(const std::string& input, const std::string& prefix) {
+  return input.find(prefix) == 0 ? input : prefix + input;
+}
+
 spot_msgs::msg::BatteryStateArray getBatteryStates(const ::bosdyn::api::RobotState& robot_state,
                                                    const google::protobuf::Duration& clock_skew) {
   spot_msgs::msg::BatteryStateArray battery_states;

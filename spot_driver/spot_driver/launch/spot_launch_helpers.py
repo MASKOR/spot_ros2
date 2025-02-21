@@ -3,10 +3,12 @@
 import logging
 import os
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import yaml
+from launch import LaunchContext, Substitution
 from launch.actions import DeclareLaunchArgument
+from launch.substitutions import PathJoinSubstitution
 from synchros2.launch.actions import DeclareBooleanLaunchArgument
 
 from spot_wrapper.wrapper import SpotWrapper
@@ -22,6 +24,7 @@ _CERTIFICATE: Literal["certificate"] = "certificate"
 _PORT: Literal["port"] = "port"
 _CAMERAS_USED: Literal["cameras_used"] = "cameras_used"
 _GRIPPERLESS: Literal["gripperless"] = "gripperless"
+_SPOT_NAME: Literal["spot_name"] = "spot_name"
 
 
 IMAGE_PUBLISHER_ARGS = [
@@ -135,8 +138,8 @@ def get_ros_param_dict(config_file_path: str) -> Dict[str, Any]:
             raise yaml.YAMLError(f"Config file {config_file_path} couldn't be parsed: failed with '{exc}'")
 
 
-def get_login_parameters(config_file_path: str) -> Tuple[str, str, str, Optional[int], Optional[str]]:
-    """Obtain the username, password, hostname, port, and certificate of Spot from the environment variables or,
+def get_login_parameters(config_file_path: str) -> Tuple[str, str, str, Optional[int], Optional[str], Optional[str]]:
+    """Obtain the username, password, hostname, port, certificate, and name of Spot from the environment variables or,
     if they are not set, the configuration file yaml.
 
     Args:
@@ -146,7 +149,8 @@ def get_login_parameters(config_file_path: str) -> Tuple[str, str, str, Optional
         ValueError: If any of username, password, hostname is not set.
 
     Returns:
-        Tuple[str, str, str, Optional[int], Optional[str]]: username, password, hostname, port, certificate
+        Tuple[str, str, str, Optional[int], Optional[str], Optional[str]]: username, password, hostname, port,
+        certificate, spot_name
     """
     # Get value from environment variables
     username = os.getenv("BOSDYN_CLIENT_USERNAME")
@@ -155,6 +159,7 @@ def get_login_parameters(config_file_path: str) -> Tuple[str, str, str, Optional
     portnum = os.getenv("SPOT_PORT")
     port = int(portnum) if portnum else None
     certificate = os.getenv("SPOT_CERTIFICATE")
+    spot_name: Optional[str] = None
 
     ros_params = get_ros_param_dict(config_file_path)
     # only set username/password/hostname if they were not already set as environment variables.
@@ -174,7 +179,9 @@ def get_login_parameters(config_file_path: str) -> Tuple[str, str, str, Optional
             f"[Username: '{username}' Password: '{password}' Hostname: '{hostname}']. Ensure that your environment "
             "variables are set or update your config_file yaml."
         )
-    return username, password, hostname, port, certificate
+    if _SPOT_NAME in ros_params and ros_params[_SPOT_NAME]:
+        spot_name = ros_params[_SPOT_NAME]
+    return username, password, hostname, port, certificate, spot_name
 
 
 def default_camera_sources(has_arm: bool, gripperless: bool) -> List[str]:
@@ -236,18 +243,17 @@ def get_camera_sources(config_file_path: str, has_arm: bool) -> List[str]:
     return camera_sources
 
 
-def spot_has_arm(config_file_path: str, spot_name: str) -> bool:
+def spot_has_arm(config_file_path: str) -> bool:
     """Check if Spot has an arm querying the robot through SpotWrapper
 
     Args:
         config_file_path (str): Path to configuration yaml
-        spot_name (str): Name of spot
 
     Returns:
         bool: True if spot has an arm, False otherwise
     """
     logger = logging.getLogger("spot_driver_launch")
-    username, password, hostname, port, certificate = get_login_parameters(config_file_path)
+    username, password, hostname, port, certificate, spot_name = get_login_parameters(config_file_path)
     gripperless = get_gripperless(get_ros_param_dict(config_file_path))
     spot_wrapper = SpotWrapper(
         username=username,
@@ -260,3 +266,55 @@ def spot_has_arm(config_file_path: str, spot_name: str) -> bool:
         gripperless=gripperless,
     )
     return spot_wrapper.has_arm()
+
+
+def substitute_launch_parameters(
+    config_file_path: Union[str, Substitution],
+    substitutions: Dict[str, Substitution],
+    context: LaunchContext,
+) -> Dict[str, Any]:
+    """Pass the given ROS launch parameter substitutions into parameters from the ROS config yaml file.
+
+    Args:
+        config_file_path (str | Substitution): Path to the config yaml.
+        substitutions (Dict[str, Substitution]): Dictionary of parameter_name: parameter_value containing the desired
+                                                 launch parameter substitutions.
+        context (LaunchContext): Context for acquiring the launch configuration inner values.
+
+    Returns:
+        dict[str, Any]: dictionary of the substituted parameter_name: parameter_value.
+        If there is no config file, returns a dictionary containing only the given substitutions.
+        If there is no config file and the substitutions don't have any values, returns an empty dictionary.
+    """
+    config_params: Dict[str, Any] = get_ros_param_dict(
+        config_file_path if isinstance(config_file_path, str) else config_file_path.perform(context)
+    )
+    for key, value in substitutions.items():
+        if value.perform(context):
+            config_params[key] = value
+
+    return config_params
+
+
+def get_name_and_prefix(ros_params: Dict[str, Any]) -> Tuple[Union[str, Substitution], Union[str, Substitution]]:
+    """Get the Spot robot name and ROS TF frame prefix from the provided ROS parameters, which may be taken directly
+    from the yaml config or passed through from launch arguments. This will compose the frame prefix from the Spot name
+    if not given explicitly.
+
+    Args:
+        ros_params (dict[str, Any]): A dictionary of parameter_name: parameter_value.
+
+    Returns:
+        Tuple[str | Substitution, str | Substitution]: spot_name, tf_prefix.
+    """
+    spot_name: Union[str, Substitution] = ros_params["spot_name"] if "spot_name" in ros_params else ""
+    tf_prefix: Optional[Union[str, Substitution]] = ros_params["frame_prefix"] if "frame_prefix" in ros_params else None
+    if tf_prefix is None:
+        if isinstance(spot_name, Substitution):
+            tf_prefix = PathJoinSubstitution([spot_name, ""])
+        elif isinstance(spot_name, str) and spot_name:
+            tf_prefix = spot_name + "/"
+        else:
+            tf_prefix = ""
+
+    return spot_name, tf_prefix

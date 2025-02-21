@@ -841,4 +841,31 @@ TEST(RobotStateConversions, TestGetBehaviorFaultStateNoFaults) {
   // THEN the optional which wraps the output ROS message is set to nullopt
   EXPECT_THAT(out.has_value(), IsFalse());
 }
+
+TEST(RobotStateConversions, TestFramePrefixParsing) {
+  // GIVEN we have some frame name and prefix
+  const std::string frame = "some_frame";
+  static constexpr auto prefix = "some_frame_prefix/";
+
+  // WHEN we try to modify an input frame, which does not contain the prefix at the beginning
+  // THEN we don't strip anything and the output is the same as input
+  ASSERT_THAT(stripPrefix(frame, prefix), StrEq(frame));
+  ASSERT_THAT(stripPrefix(frame + prefix, prefix), StrEq(frame + prefix));
+  // THEN we prepend the prefix to the input
+  ASSERT_THAT(prependPrefix(frame, prefix), StrEq(prefix + frame));
+  ASSERT_THAT(prependPrefix(frame + prefix, prefix), StrEq(prefix + frame + prefix));
+
+  // WHEN we try to modify an input frame, which does contain the prefix at the beginning
+  // THEN we strip the prefix from the beginning
+  ASSERT_THAT(stripPrefix(prefix + frame, prefix), StrEq(frame));
+  ASSERT_THAT(stripPrefix(prefix + frame + prefix, prefix), StrEq(frame + prefix));
+  // THEN we don't prepend anything and the output is the same as input
+  ASSERT_THAT(prependPrefix(prefix + frame, prefix), StrEq(prefix + frame));
+  ASSERT_THAT(prependPrefix(prefix + frame + prefix, prefix), StrEq(prefix + frame + prefix));
+
+  // WHEN we try to modify an input frame with an empty prefix
+  // THEN the output is always the same as input
+  ASSERT_THAT(stripPrefix(frame, ""), StrEq(frame));
+  ASSERT_THAT(prependPrefix(frame, ""), StrEq(frame));
+}
 }  // namespace spot_ros2::test

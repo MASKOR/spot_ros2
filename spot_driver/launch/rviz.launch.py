@@ -17,7 +17,7 @@ from launch_ros.substitutions import FindPackageShare
 THIS_PACKAGE = "spot_driver"
 
 
-def create_rviz_config(robot_name: str) -> None:
+def create_rviz_config(robot_name: str, tf_prefix: str) -> None:
     """Writes a configuration file for rviz to visualize a single spot robot"""
 
     RVIZ_TEMPLATE_FILENAME = os.path.join(get_package_share_directory(THIS_PACKAGE), "rviz", "spot_template.yaml")
@@ -26,9 +26,10 @@ def create_rviz_config(robot_name: str) -> None:
     with open(RVIZ_TEMPLATE_FILENAME, "r") as template_file:
         config = yaml.safe_load(template_file)
 
-        if robot_name:
+        if tf_prefix:
             # replace fixed frame with robot body frame
-            config["Visualization Manager"]["Global Options"]["Fixed Frame"] = f"{robot_name}/vision"
+            config["Visualization Manager"]["Global Options"]["Fixed Frame"] = f"{tf_prefix}vision"
+        if robot_name:
             # Add robot models for each robot
             for display in config["Visualization Manager"]["Displays"]:
                 if "RobotModel" in display["Class"]:
@@ -45,10 +46,11 @@ def create_rviz_config(robot_name: str) -> None:
 def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     rviz_config_file = LaunchConfiguration("rviz_config_file").perform(context)
     spot_name = LaunchConfiguration("spot_name").perform(context)
+    tf_prefix = LaunchConfiguration("tf_prefix").perform(context)
 
     # It looks like passing an optional of value "None" gets converted to a string of value "None"
     if not rviz_config_file or rviz_config_file == "None":
-        create_rviz_config(spot_name)
+        create_rviz_config(spot_name, tf_prefix)
         rviz_config_file = PathJoinSubstitution([FindPackageShare(THIS_PACKAGE), "rviz", "spot.rviz"]).perform(context)
 
     rviz = launch_ros.actions.Node(
@@ -70,6 +72,13 @@ def generate_launch_description() -> launch.LaunchDescription:
             "rviz_config_file",
             default_value="",
             description="RViz config file",
+        )
+    )
+    launch_args.append(
+        DeclareLaunchArgument(
+            "tf_prefix",
+            default_value="",
+            description="apply namespace prefix to robot links and joints",
         )
     )
     launch_args.append(DeclareLaunchArgument("spot_name", default_value="", description="Name of Spot"))

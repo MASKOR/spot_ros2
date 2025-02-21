@@ -40,12 +40,12 @@ void KinematicNode::initialize(std::shared_ptr<rclcpp::Node> node, std::unique_p
 
   const auto hostname = parameter_interface->getHostname();
   const auto port = parameter_interface->getPort();
-  const auto robot_name = parameter_interface->getSpotName();
   const auto username = parameter_interface->getUsername();
   const auto password = parameter_interface->getPassword();
+  const std::string frame_prefix = parameter_interface->getFramePrefixWithDefaultFallback();
 
   // create and authenticate robot
-  if (const auto create_robot_result = spot_api_->createRobot(robot_name, hostname, port); !create_robot_result) {
+  if (const auto create_robot_result = spot_api_->createRobot(hostname, port, frame_prefix); !create_robot_result) {
     const auto error_msg{std::string{"Failed to create interface to robot: "}.append(create_robot_result.error())};
     logger_interface->logError(error_msg);
     throw std::runtime_error(error_msg);

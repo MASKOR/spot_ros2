@@ -30,14 +30,9 @@ StatePublisher::StatePublisher(const std::shared_ptr<StateClientInterface>& stat
       logger_interface_{std::move(logger_interface)},
       tf_broadcaster_interface_{std::move(tf_broadcaster_interface)},
       timer_interface_{std::move(timer_interface)} {
-  const auto spot_name = parameter_interface_->getSpotName();
-  frame_prefix_ = spot_name.empty() ? "" : spot_name + "/";
-
-  const auto preferred_odom_frame = parameter_interface_->getPreferredOdomFrame();
-  is_using_vision_ = preferred_odom_frame == "vision";
-
-  const auto tf_root = parameter_interface_->getTFRoot();
-  full_tf_root_id_ = tf_root.find('/') == std::string::npos ? frame_prefix_ + tf_root : tf_root;
+  frame_prefix_ = parameter_interface_->getFramePrefixWithDefaultFallback();
+  is_using_vision_ = parameter_interface_->getPreferredOdomFrame() == "vision";
+  full_tf_root_id_ = frame_prefix_ + parameter_interface_->getTFRoot();
 
   // Create a timer to request and publish robot state at a fixed rate
   timer_interface_->setTimer(kRobotStateCallbackPeriod, [this] {

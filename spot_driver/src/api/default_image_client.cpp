@@ -47,15 +47,13 @@ static const std::set<std::string> kExcludedStaticTfFrames{
 };
 
 tl::expected<sensor_msgs::msg::CameraInfo, std::string> toCameraInfoMsg(
-    const bosdyn::api::ImageResponse& image_response, const std::string& robot_name,
+    const bosdyn::api::ImageResponse& image_response, const std::string& frame_prefix,
     const google::protobuf::Duration& clock_skew) {
   sensor_msgs::msg::CameraInfo info_msg;
   info_msg.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
   info_msg.height = image_response.shot().image().rows();
   info_msg.width = image_response.shot().image().cols();
-  // Omit leading `/` from frame ID if robot_name is empty
-  info_msg.header.frame_id =
-      (robot_name.empty() ? "" : robot_name + "/") + image_response.shot().frame_name_image_sensor();
+  info_msg.header.frame_id = frame_prefix + image_response.shot().frame_name_image_sensor();
   info_msg.header.stamp = spot_ros2::robotTimeToLocalTime(image_response.shot().acquisition_time(), clock_skew);
 
   // We assume that the camera images have already been corrected for distortion, so the 5 distortion parameters are all
@@ -92,17 +90,16 @@ tl::expected<sensor_msgs::msg::CameraInfo, std::string> toCameraInfoMsg(
   return info_msg;
 }
 
-std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& robot_name,
+std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& frame_prefix,
                                         const google::protobuf::Duration& clock_skew) {
   std_msgs::msg::Header header;
-  // Omit leading `/` from frame ID if robot_name is empty
-  header.frame_id = (robot_name.empty() ? "" : robot_name + "/") + image_capture.frame_name_image_sensor();
+  header.frame_id = frame_prefix + image_capture.frame_name_image_sensor();
   header.stamp = spot_ros2::robotTimeToLocalTime(image_capture.acquisition_time(), clock_skew);
   return header;
 }
 
 tl::expected<std::vector<geometry_msgs::msg::TransformStamped>, std::string> getImageTransforms(
-    const bosdyn::api::ImageResponse& image_response, const std::string& robot_name,
+    const bosdyn::api::ImageResponse& image_response, const std::string& frame_prefix,
     const google::protobuf::Duration& clock_skew) {
   std::vector<geometry_msgs::msg::TransformStamped> out;
   for (const auto& [child_frame_id, transform] :
@@ -119,8 +116,7 @@ tl::expected<std::vector<geometry_msgs::msg::TransformStamped>, std::string> get
         (transform.parent_frame_name() == "arm0.link_wr1") ? "arm_link_wr1" : transform.parent_frame_name();
 
     const auto tform_msg = spot_ros2::toTransformStamped(
-        transform.parent_tform_child(), robot_name.empty() ? parent_frame_id : (robot_name + "/" + parent_frame_id),
-        robot_name.empty() ? child_frame_id : (robot_name + "/" + child_frame_id),
+        transform.parent_tform_child(), frame_prefix + parent_frame_id, frame_prefix + child_frame_id,
         spot_ros2::robotTimeToLocalTime(image_response.shot().acquisition_time(), clock_skew));
 
     out.push_back(tform_msg);
@@ -129,7 +125,7 @@ tl::expected<std::vector<geometry_msgs::msg::TransformStamped>, std::string> get
 }
 
 tl::expected<sensor_msgs::msg::CompressedImage, std::string> toCompressedImageMsg(
-    const bosdyn::api::ImageCapture& image_capture, const std::string& robot_name,
+    const bosdyn::api::ImageCapture& image_capture, const std::string& frame_prefix,
     const google::protobuf::Duration& clock_skew) {
   const auto& image = image_capture.image();
   if (image.format() != bosdyn::api::Image_Format_FORMAT_JPEG) {
@@ -139,7 +135,7 @@ tl::expected<sensor_msgs::msg::CompressedImage, std::string> toCompressedImageMs
 
   auto data = image.data();
   sensor_msgs::msg::CompressedImage compressed_image;
-  compressed_image.header = createImageHeader(image_capture, robot_name, clock_skew);
+  compressed_image.header = createImageHeader(image_capture, frame_prefix, clock_skew);
   compressed_image.format = "jpeg";
   compressed_image.data.insert(compressed_image.data.begin(), data.begin(), data.end());
   return compressed_image;
@@ -149,8 +145,8 @@ tl::expected<sensor_msgs::msg::CompressedImage, std::string> toCompressedImageMs
 namespace spot_ros2 {
 
 DefaultImageClient::DefaultImageClient(::bosdyn::client::ImageClient* image_client,
-                                       std::shared_ptr<TimeSyncApi> time_sync_api, const std::string& robot_name)
-    : image_client_{image_client}, time_sync_api_{time_sync_api}, robot_name_{robot_name} {}
+                                       std::shared_ptr<TimeSyncApi> time_sync_api, const std::string& frame_prefix)
+    : image_client_{image_client}, time_sync_api_{time_sync_api}, frame_prefix_{frame_prefix} {}
 
 tl::expected<GetImagesResult, std::string> DefaultImageClient::getImages(::bosdyn::api::GetImageRequest request,
                                                                          bool uncompress_images,
@@ -173,7 +169,7 @@ tl::expected<GetImagesResult, std::string> DefaultImageClient::getImages(::bosdy
     const auto& image = image_response.shot().image();
     auto data = image.data();
 
-    const auto info_msg = toCameraInfoMsg(image_response, robot_name_, clock_skew_result.value());
+    const auto info_msg = toCameraInfoMsg(image_response, frame_prefix_, clock_skew_result.value());
     if (!info_msg) {
       return tl::make_unexpected("Failed to convert SDK image response to ROS CameraInfo message: " + info_msg.error());
     }
@@ -187,7 +183,7 @@ tl::expected<GetImagesResult, std::string> DefaultImageClient::getImages(::bosdy
 
     if (image.format() == bosdyn::api::Image_Format_FORMAT_JPEG && publish_compressed_images) {
       const auto compressed_image_msg =
-          toCompressedImageMsg(image_response.shot(), robot_name_, clock_skew_result.value());
+          toCompressedImageMsg(image_response.shot(), frame_prefix_, clock_skew_result.value());
       if (!compressed_image_msg) {
         return tl::make_unexpected("Failed to convert SDK image response to ROS Image message: " +
                                    compressed_image_msg.error());
@@ -197,14 +193,14 @@ tl::expected<GetImagesResult, std::string> DefaultImageClient::getImages(::bosdy
     }
 
     if (image.format() != bosdyn::api::Image_Format_FORMAT_JPEG || uncompress_images) {
-      const auto image_msg = getDecompressImageMsg(image_response.shot(), robot_name_, clock_skew_result.value());
+      const auto image_msg = getDecompressImageMsg(image_response.shot(), frame_prefix_, clock_skew_result.value());
       if (!image_msg) {
         return tl::make_unexpected("Failed to convert SDK image response to ROS Image message: " + image_msg.error());
       }
       out.images_.try_emplace(get_source_name_result.value(), ImageWithCameraInfo{image_msg.value(), info_msg.value()});
     }
 
-    const auto transforms_result = getImageTransforms(image_response, robot_name_, clock_skew_result.value());
+    const auto transforms_result = getImageTransforms(image_response, frame_prefix_, clock_skew_result.value());
     if (transforms_result.has_value()) {
       out.transforms_.insert(out.transforms_.end(), transforms_result.value().begin(), transforms_result.value().end());
     } else {

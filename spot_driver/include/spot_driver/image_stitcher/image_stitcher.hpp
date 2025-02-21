@@ -24,6 +24,7 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <spot_driver/interfaces/logger_interface_base.hpp>
+#include <spot_driver/interfaces/parameter_interface_base.hpp>
 #include <spot_driver/interfaces/rclcpp_tf_broadcaster_interface.hpp>
 #include <spot_driver/interfaces/tf_listener_interface_base.hpp>
 #include <string>
@@ -101,7 +102,7 @@ class CameraHandleBase {
 
 class RclcppCameraHandle : public CameraHandleBase {
  public:
-  explicit RclcppCameraHandle(const std::shared_ptr<rclcpp::Node>& node);
+  explicit RclcppCameraHandle(const std::shared_ptr<rclcpp::Node>& node, const std::string& frame_prefix);
 
   void publish(const Image& image, const CameraInfo& info) const override;
   void broadcast(const Transform& tf, const Time& stamp) override;
@@ -165,7 +166,8 @@ class ImageStitcher {
  public:
   ImageStitcher(std::unique_ptr<CameraSynchronizerBase> synchronizer,
                 std::unique_ptr<TfListenerInterfaceBase> tf_listener, std::unique_ptr<CameraHandleBase> camera_handle,
-                std::unique_ptr<LoggerInterfaceBase> logger);
+                std::unique_ptr<LoggerInterfaceBase> logger,
+                std::unique_ptr<ParameterInterfaceBase> parameter_interface);
 
  private:
   void callback(const std::shared_ptr<const Image>&, const std::shared_ptr<const CameraInfo>&,
@@ -175,6 +177,7 @@ class ImageStitcher {
   std::unique_ptr<TfListenerInterfaceBase> tf_listener_;
   std::unique_ptr<CameraHandleBase> camera_handle_;
   std::unique_ptr<LoggerInterfaceBase> logger_;
+  std::unique_ptr<ParameterInterfaceBase> parameter_interface_;
 
   std::optional<MiddleCamera> camera_;
 };
