@@ -1,0 +1,11 @@
+spot_passthrough_controller:
+  joints: {
+    type: string_array,
+    default_value: [],
+    description: "Names of the joint to control",
+  }
+  interface_names: {
+    type: string_array,
+    default_value: [],
+    description: "Names of the interfaces to command",
+  }
