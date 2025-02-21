@@ -342,8 +342,7 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
     joint_commands_.k_q_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 3];
     joint_commands_.k_qd_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 4];
   }
-  // here to verify robot wont flip out during testing
-  // send_command(joint_commands_);
+  send_command(joint_commands_);
 
   return hardware_interface::return_type::OK;
 }
@@ -581,7 +580,7 @@ void SpotHardware::send_command(const JointCommands& joint_commands) {
   const std::vector<float>& k_qd_p = joint_commands.k_qd_p;
 
   // put this here for testing, robot flipped out
-  return;
+  // return;
 
   // build protobuf
   auto* joint_cmd = joint_request_.mutable_joint_command();
