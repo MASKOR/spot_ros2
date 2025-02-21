@@ -250,7 +250,7 @@ std::vector<hardware_interface::CommandInterface> SpotHardware::export_command_i
     command_interfaces.emplace_back(hardware_interface::CommandInterface(
         joint.name, HW_IF_K_Q_P, &hw_commands_[command_interfaces_per_joint_ * i + 3]));
     command_interfaces.emplace_back(hardware_interface::CommandInterface(
-        joint.name, HW_IF_K_QD_P, &hw_commands_[command_interfaces_per_joint_ * i + 3]));
+        joint.name, HW_IF_K_QD_P, &hw_commands_[command_interfaces_per_joint_ * i + 4]));
   }
   return command_interfaces;
 }
@@ -304,7 +304,12 @@ hardware_interface::return_type SpotHardware::read(const rclcpp::Time& /*time*/,
 
   // Set initial command values to current state
   if (!init_state_) {
-    hw_commands_ = hw_states_;
+    for (size_t i = 0; i < njoints_; i++) {
+      hw_commands_[command_interfaces_per_joint_ * i] = hw_states_[state_interfaces_per_joint_ * i];
+      hw_commands_[command_interfaces_per_joint_ * i + 1] = hw_states_[state_interfaces_per_joint_ * i + 1];
+      hw_commands_[command_interfaces_per_joint_ * i + 2] = hw_states_[state_interfaces_per_joint_ * i + 2];
+      // this does NOT fill out kqp and kqdp commands (would be hw_commands[i+3/4]) as they are not in state interface
+    }
     init_state_ = true;
   }
 
@@ -318,6 +323,11 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
     return hardware_interface::return_type::ERROR;
   }
 
+  RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
+  for (const auto& c : hw_commands_) {
+    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
+  }
+
   for (std::size_t i = 0; i < info_.joints.size(); ++i) {
     joint_commands_.position.at(i) = hw_commands_[command_interfaces_per_joint_ * i];
     joint_commands_.velocity.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 1];
@@ -325,7 +335,8 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
     joint_commands_.k_q_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 3];
     joint_commands_.k_qd_p.at(i) = hw_commands_[command_interfaces_per_joint_ * i + 4];
   }
-  send_command(joint_commands_);
+  // here to verify robot wont flip out during testing
+  // send_command(joint_commands_);
 
   return hardware_interface::return_type::OK;
 }
