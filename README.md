@@ -72,6 +72,11 @@ The following flags may be useful for extra functionality when running the image
 | `--runtime nvidia` + `--gpus all`  | Use the [NVIDIA Container Runtime](https://developer.nvidia.com/container-runtime) to run the container with GPU acceleration |
 | `-e DISPLAY`  | Bind your display to the container in order to run GUI apps. Note that you will need to allow the Docker container to connect to your X11 server, which can be done in a number of ways ranging from disabling X11 authentication entirely, or by allowing the Docker daemon specifically to access your display server.  |
 | `--network host` | Use the host network directly. May help resolve issues connecting to Spot Wifi |
+| `--build-arg EXPERIMENTAL_ZENOH_RMW=TRUE` | Enable experimental rmw_zenoh middleware. May result in issues we cannot address. |
+
+### Experimental - RMW ZENOH Middleware
+
+**Disclaimer:** The RMW ZENOH middleware is now available for installation with the driver. Please note that this feature is currently under experimental testing and may result in issues that we cannot address. To start the zenoh router with the driver, set the `experimental_zenoh_rmw` parameter to `True`. For further configuration and settings, please refer to the [rmw_zenoh documentation](https://github.com/ros2/rmw_zenoh).
 
 
 # Packages
