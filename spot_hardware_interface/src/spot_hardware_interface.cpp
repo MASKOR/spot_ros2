@@ -217,6 +217,8 @@ hardware_interface::CallbackReturn SpotHardware::on_activate(const rclcpp_lifecy
   joint_commands_.position = std::vector<float>(info_.joints.size(), 0.0);
   joint_commands_.velocity = std::vector<float>(info_.joints.size(), 0.0);
   joint_commands_.load = std::vector<float>(info_.joints.size(), 0.0);
+  joint_commands_.k_q_p = std::vector<float>(info_.joints.size(), 0.0);
+  joint_commands_.k_qd_p = std::vector<float>(info_.joints.size(), 0.0);
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -559,6 +561,9 @@ void SpotHardware::send_command(const JointCommands& joint_commands) {
   const std::vector<float>& load = joint_commands.load;
   const std::vector<float>& k_q_p = joint_commands.k_q_p;
   const std::vector<float>& k_qd_p = joint_commands.k_qd_p;
+
+  // put this here for testing, robot flipped out
+  return;
 
   // build protobuf
   auto* joint_cmd = joint_request_.mutable_joint_command();
