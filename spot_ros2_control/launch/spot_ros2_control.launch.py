@@ -21,7 +21,9 @@ from synchros2.launch.actions import DeclareBooleanLaunchArgument
 from spot_driver.launch.spot_launch_helpers import (
     IMAGE_PUBLISHER_ARGS,
     declare_image_publisher_args,
+    get_login_parameters,
     get_ros_param_dict,
+    spot_has_arm,
 )
 
 THIS_PACKAGE = "spot_ros2_control"
@@ -111,8 +113,8 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
 
     # If running on robot, query if it has an arm, and parse config for login parameters and gains
     if hardware_interface == "robot":
-        arm = True  # spot_has_arm(config_file_path=config_file, spot_name="")
-        username, password, hostname = "aaaaa", "bbbbb", "ccccc"  # get_login_parameters(config_file)[:3]
+        arm = spot_has_arm(config_file_path=config_file, spot_name="")
+        username, password, hostname = get_login_parameters(config_file)[:3]
         login_params = f" hostname:={hostname} username:={username} password:={password} "
         param_dict = get_ros_param_dict(config_file)
         if "k_q_p" in param_dict:
