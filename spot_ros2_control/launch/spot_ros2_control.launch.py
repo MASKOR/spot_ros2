@@ -202,6 +202,7 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             namespace=spot_name,
         )
     )
+    return
     # Finally, launch extra nodes for state and image publishing if we are running on a robot.
     if hardware_interface == "robot":
         # launch image publishers
