@@ -302,20 +302,17 @@ hardware_interface::return_type SpotHardware::read(const rclcpp::Time& /*time*/,
     hw_states_.at(i * state_interfaces_per_joint_ + 2) = joint_load.at(i);
   }
 
-  // Set initial command values to current state
+  // Fill in the initial command values
   if (!init_state_) {
     for (size_t i = 0; i < njoints_; i++) {
+      // copy over current position, velocity, and load from state to current command
       hw_commands_[command_interfaces_per_joint_ * i] = hw_states_[state_interfaces_per_joint_ * i];
       hw_commands_[command_interfaces_per_joint_ * i + 1] = hw_states_[state_interfaces_per_joint_ * i + 1];
       hw_commands_[command_interfaces_per_joint_ * i + 2] = hw_states_[state_interfaces_per_joint_ * i + 2];
-      // this does NOT fill out kqp and kqdp commands (would be hw_commands[i+3/4]) as they are not in state interface
+      // Fill in k_q_p and k_qd_p gains from the initial_value field from the URDF
       const auto& joint = info_.joints.at(i);
       hw_commands_[command_interfaces_per_joint_ * i + 3] = std::stof(joint.command_interfaces.at(3).initial_value);
       hw_commands_[command_interfaces_per_joint_ * i + 4] = std::stof(joint.command_interfaces.at(4).initial_value);
-    }
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
-    for (const auto& c : hw_commands_) {
-      RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
     }
     init_state_ = true;
   }
@@ -329,11 +326,6 @@ hardware_interface::return_type SpotHardware::write(const rclcpp::Time& /*time*/
     RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Command streaming was not started");
     return hardware_interface::return_type::ERROR;
   }
-
-  // RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "\n\nhw_commands");
-  // for (const auto& c : hw_commands_) {
-  //   RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "'%f'", c);
-  // }
 
   for (std::size_t i = 0; i < info_.joints.size(); ++i) {
     joint_commands_.position.at(i) = hw_commands_[command_interfaces_per_joint_ * i];
@@ -578,9 +570,6 @@ void SpotHardware::send_command(const JointCommands& joint_commands) {
   const std::vector<float>& load = joint_commands.load;
   const std::vector<float>& k_q_p = joint_commands.k_q_p;
   const std::vector<float>& k_qd_p = joint_commands.k_qd_p;
-
-  // put this here for testing, robot flipped out
-  // return;
 
   // build protobuf
   auto* joint_cmd = joint_request_.mutable_joint_command();
