@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <spot_driver/api/lease_client_interface.hpp>
 
@@ -19,6 +20,8 @@ class MockLeaseClient : public LeaseClientInterface {
               (override));
 
   MOCK_METHOD((tl::expected<bool, std::string>), returnLease, (const ::bosdyn::client::Lease&), (override));
+
+  MOCK_METHOD((tl::expected<std::vector<::bosdyn::api::LeaseResource>, std::string>), listLeases, (), (override));
 
   MOCK_METHOD((std::shared_ptr<::bosdyn::client::LeaseWallet>), getLeaseWallet, (), (const, override));
 

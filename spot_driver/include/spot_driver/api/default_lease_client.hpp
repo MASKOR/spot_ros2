@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace spot_ros2 {
 /**
@@ -28,6 +29,8 @@ class DefaultLeaseClient : public LeaseClientInterface {
       const std::string& resource_name, LeaseUseCallback retention_failure_callback) override;
 
   [[nodiscard]] tl::expected<bool, std::string> returnLease(const ::bosdyn::client::Lease& lease) override;
+
+  [[nodiscard]] tl::expected<std::vector<::bosdyn::api::LeaseResource>, std::string> listLeases() override;
 
   [[nodiscard]] std::shared_ptr<::bosdyn::client::LeaseWallet> getLeaseWallet() const override;
 

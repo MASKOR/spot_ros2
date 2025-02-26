@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <tl_expected/expected.hpp>
 
@@ -56,6 +57,13 @@ class LeaseClientInterface {
    * Otherwise, it will carry an error message describing the failure.
    */
   virtual tl::expected<bool, std::string> returnLease(const ::bosdyn::client::Lease& lease) = 0;
+
+  /**
+   * @brief Return all active leases.
+   * @return Returns an expected bearing a collection of leased resources.
+   * Otherwise, it will carry an error message describing the failure.
+   */
+  virtual tl::expected<std::vector<::bosdyn::api::LeaseResource>, std::string> listLeases() = 0;
 
   /**
    * @return The underlying lease wallet.

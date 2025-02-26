@@ -44,6 +44,7 @@ class RclcppParameterInterface : public ParameterInterfaceBase {
   [[nodiscard]] tl::expected<std::set<spot_ros2::SpotCamera>, std::string> getCamerasUsed(
       const bool has_arm, const bool gripperless) const override;
   [[nodiscard]] std::chrono::seconds getTimeSyncTimeout() const override;
+  [[nodiscard]] std::optional<double> getLeaseRate() const override;
 
  private:
   std::shared_ptr<rclcpp::Node> node_;
