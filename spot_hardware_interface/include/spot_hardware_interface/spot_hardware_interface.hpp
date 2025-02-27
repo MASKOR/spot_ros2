@@ -87,12 +87,17 @@ class StateStreamingHandler {
    * @return JointStates struct containing vectors of position, velocity, and load values.
    */
   void get_joint_states(JointStates& joint_states);
+  /**
+   * @brief Get a struct of the current foot states of the robot.
+   */
+  void get_foot_states(::bosdyn::api::FootState::Contact& foot_states);
 
  private:
   // Stores the current position, velocity, and load of the robot's joints.
   std::vector<float> current_position_;
   std::vector<float> current_velocity_;
   std::vector<float> current_load_;
+  ::bosdyn::api::FootState::Contact current_foot_state_;
   // responsible for ensuring read/writes of joint states do not happen at the same time.
   std::mutex mutex_;
 };
@@ -140,6 +145,7 @@ class SpotHardware : public hardware_interface::SystemInterface {
   // The 3 state interfaces are position, velocity, and effort.
   static constexpr size_t state_interfaces_per_joint_ = 3;
   size_t njoints_;
+  size_t nfeet_;
 
   // Login info
   std::string hostname_;
@@ -164,6 +170,8 @@ class SpotHardware : public hardware_interface::SystemInterface {
   JointStates joint_states_;
   // Holds joint commands for the robot to send to BD SDK
   JointCommands joint_commands_;
+  // Holds foot states received from the BD SDK
+  ::bosdyn::api::FootState::Contact foot_states_;
 
   // Thread for reading the state of the robot.
   std::jthread state_thread_;
