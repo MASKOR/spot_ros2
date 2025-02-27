@@ -88,7 +88,10 @@ class StateStreamingHandler {
    */
   void get_joint_states(JointStates& joint_states);
   /**
-   * @brief Get a struct of the current foot states of the robot.
+   * @brief Save the current foot states of the robot where:
+   *  CONTACT_UNKNOWN	0	Unknown contact. Do not use.
+      CONTACT_MADE	1	The foot is currently in contact with the ground.
+      CONTACT_LOST	2	The foot is not in contact with the ground.
    */
   void get_foot_states(::bosdyn::api::FootState::Contact& foot_states);
 
@@ -97,6 +100,7 @@ class StateStreamingHandler {
   std::vector<float> current_position_;
   std::vector<float> current_velocity_;
   std::vector<float> current_load_;
+  // store the current foot contact states
   ::bosdyn::api::FootState::Contact current_foot_state_;
   // responsible for ensuring read/writes of joint states do not happen at the same time.
   std::mutex mutex_;
@@ -145,7 +149,6 @@ class SpotHardware : public hardware_interface::SystemInterface {
   // The 3 state interfaces are position, velocity, and effort.
   static constexpr size_t state_interfaces_per_joint_ = 3;
   size_t njoints_;
-  size_t nfeet_;
 
   // Login info
   std::string hostname_;

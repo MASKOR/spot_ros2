@@ -56,7 +56,6 @@ void StateStreamingHandler::get_joint_states(JointStates& joint_states) {
 void StateStreamingHandler::get_foot_states(::bosdyn::api::FootState::Contact& foot_states) {
   // lock so that read/write doesn't happen at the same time
   const std::lock_guard<std::mutex> lock(mutex_);
-  // Fill in members of the joint states stuct passed in by reference.
   foot_states = current_foot_state_;
 }
 
