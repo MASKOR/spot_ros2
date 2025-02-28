@@ -33,6 +33,7 @@
   <depend>tf2_ros</depend>
   <depend>tl_expected</depend>
 
+  <exec_depend>bondpy</exec_depend>
   <exec_depend>synchros2</exec_depend>
   <exec_depend>python3-protobuf</exec_depend>
   <exec_depend>python3-tk</exec_depend>
