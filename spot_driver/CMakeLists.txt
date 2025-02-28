@@ -31,6 +31,7 @@ set(THIS_PACKAGE_INCLUDE_ROS_DEPENDS
   tf2_ros
   tl_expected
   spot_msgs
+  std_srvs
   nav_msgs
 )
 

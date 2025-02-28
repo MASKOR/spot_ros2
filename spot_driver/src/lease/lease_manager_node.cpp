@@ -6,6 +6,7 @@
 #include <spot_driver/api/default_spot_api.hpp>
 #include <spot_driver/interfaces/rclcpp_logger_interface.hpp>
 #include <spot_driver/interfaces/rclcpp_parameter_interface.hpp>
+#include <spot_driver/interfaces/rclcpp_wall_timer_interface.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -13,24 +14,33 @@
 namespace spot_ros2::lease {
 
 LeaseManagerNode::LeaseManagerNode(std::shared_ptr<rclcpp::Node> node, std::unique_ptr<SpotApi> spot_api,
-                                   std::shared_ptr<ParameterInterfaceBase> parameter_interface,
-                                   const std::shared_ptr<LoggerInterfaceBase> logger_interface) {
-  initialize(node, std::move(spot_api), parameter_interface, logger_interface);
+                                   std::unique_ptr<LeaseManager::MiddlewareHandle> middleware_handle,
+                                   std::unique_ptr<ParameterInterfaceBase> parameter_interface,
+                                   std::unique_ptr<TimerInterfaceBase> timer_interface,
+                                   std::unique_ptr<LoggerInterfaceBase> logger_interface) {
+  initialize(node, std::move(spot_api), std::move(middleware_handle), std::move(parameter_interface),
+             std::move(timer_interface), std::move(logger_interface));
 }
 
 LeaseManagerNode::LeaseManagerNode(const rclcpp::NodeOptions& node_options) {
   auto node = std::make_shared<rclcpp::Node>("lease_manager", node_options);
-  auto parameter_interface = std::make_shared<RclcppParameterInterface>(node);
-  auto logger_interface = std::make_shared<RclcppLoggerInterface>(node->get_logger());
+  auto parameter_interface = std::make_unique<RclcppParameterInterface>(node);
+  auto timer_interface = std::make_unique<RclcppWallTimerInterface>(node);
+  auto logger_interface = std::make_unique<RclcppLoggerInterface>(node->get_logger());
+  auto middleware_handle = std::make_unique<LeaseMiddlewareHandle>(node_);
   const auto timesync_timeout = parameter_interface->getTimeSyncTimeout();
   auto spot_api =
       std::make_unique<DefaultSpotApi>("lease_manager", timesync_timeout, parameter_interface->getCertificate());
-  initialize(node, std::move(spot_api), parameter_interface, logger_interface);
+
+  initialize(node, std::move(spot_api), std::move(middleware_handle), std::move(parameter_interface),
+             std::move(timer_interface), std::move(logger_interface));
 }
 
 void LeaseManagerNode::initialize(std::shared_ptr<rclcpp::Node> node, std::unique_ptr<SpotApi> spot_api,
-                                  std::shared_ptr<ParameterInterfaceBase> parameter_interface,
-                                  const std::shared_ptr<LoggerInterfaceBase> logger_interface) {
+                                  std::unique_ptr<LeaseManager::MiddlewareHandle> middleware_handle,
+                                  std::unique_ptr<ParameterInterfaceBase> parameter_interface,
+                                  std::unique_ptr<TimerInterfaceBase> timer_interface,
+                                  std::unique_ptr<LoggerInterfaceBase> logger_interface) {
   node_ = node;
   spot_api_ = std::move(spot_api);
 
@@ -60,8 +70,9 @@ void LeaseManagerNode::initialize(std::shared_ptr<rclcpp::Node> node, std::uniqu
     throw std::runtime_error(errorMsg);
   }
 
-  internal_ = std::make_unique<LeaseManager>(std::move(lease_client), logger_interface,
-                                             std::make_unique<LeaseMiddlewareHandle>(node_));
+  internal_ =
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), parameter_interface->getLeaseRate());
   internal_->initialize();
 }
 

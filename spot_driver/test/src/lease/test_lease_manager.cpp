@@ -11,6 +11,7 @@
 #include <spot_driver/lease/lease_manager.hpp>
 #include <spot_driver/mock/mock_lease_client.hpp>
 #include <spot_driver/mock/mock_logger_interface.hpp>
+#include <spot_driver/mock/mock_timer_interface.hpp>
 
 #include <tl_expected/expected.hpp>
 
@@ -23,11 +24,17 @@ using ::bosdyn::client::kBodyResource;
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::IsEmpty;
 using ::testing::Return;
-using ::testing::SaveArg;
 
 class MockMiddlewareHandle : public LeaseManager::MiddlewareHandle {
  public:
+  MOCK_METHOD(
+      (void), createClaimLeasesService,
+      (const std::string& serviceName,
+       std::function<void(const std::shared_ptr<Trigger::Request>, std::shared_ptr<Trigger::Response>)> callback),
+      (override));
+
   MOCK_METHOD(
       (void), createAcquireLeaseService,
       (const std::string& serviceName,
@@ -41,8 +48,16 @@ class MockMiddlewareHandle : public LeaseManager::MiddlewareHandle {
                    callback),
               (override));
 
+  MOCK_METHOD(
+      (void), createReleaseLeasesService,
+      (const std::string& serviceName,
+       std::function<void(const std::shared_ptr<Trigger::Request>, std::shared_ptr<Trigger::Response>)> callback),
+      (override));
+
   MOCK_METHOD(std::shared_ptr<LeaseManager::MiddlewareHandle::Bond>, createBond,
               (const std::string& nodeName, std::function<void()> break_callback), (override));
+
+  MOCK_METHOD((void), publishLeaseArray, (std::unique_ptr<LeaseArray> message), (override));
 };
 
 /**
@@ -50,13 +65,18 @@ class MockMiddlewareHandle : public LeaseManager::MiddlewareHandle {
  */
 TEST(TestLeaseManager, initializationIsComplete) {
   auto lease_client = std::make_unique<spot_ros2::test::MockLeaseClient>();
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 }
 
@@ -85,15 +105,21 @@ TEST(TestLeaseManager, simpleLeasingSucceeds) {
     return lease;
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   // WHEN a sublease request is placed
@@ -144,15 +170,21 @@ TEST(TestLeaseManager, sequentialLeasingSucceeds) {
     return lease;
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(2);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(2);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   ::bosdyn::client::Lease first_sublease;
@@ -228,16 +260,21 @@ TEST(TestLeaseManager, doubleLeasingFails) {
     return ::bosdyn::client::DefaultResourceHierarchy(requirement);
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   auto lease_proto = ::bosdyn::api::Lease();
@@ -286,16 +323,21 @@ TEST(TestLeaseManager, rootLeaseBlocksLeafLeasing) {
     return ::bosdyn::client::DefaultResourceHierarchy(requirement);
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   auto body_lease_proto = ::bosdyn::api::Lease();
@@ -343,16 +385,21 @@ TEST(TestLeaseManager, leafLeaseBlocksRootLeasing) {
     return ::bosdyn::client::DefaultResourceHierarchy(requirement);
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   auto arm_lease_proto = ::bosdyn::api::Lease();
@@ -413,15 +460,21 @@ TEST(TestLeaseManager, revocationOnLeaseRetentionFailure) {
         return lease;
       });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createBond(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createBond(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
 
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   {
@@ -465,10 +518,6 @@ TEST(TestLeaseManager, revocationOnBondBreakage) {
     return ::bosdyn::client::DefaultResourceHierarchy(requirement);
   });
 
-  auto logger = std::make_unique<spot_ros2::test::MockLoggerInterface>();
-  EXPECT_CALL(*logger, logInfo(_)).Times(AnyNumber());
-  EXPECT_CALL(*logger, logError(_)).Times(AnyNumber());
-
   {
     auto initial_lease_proto = ::bosdyn::api::Lease();
     initial_lease_proto.set_resource(kBodyResource);
@@ -486,20 +535,30 @@ TEST(TestLeaseManager, revocationOnBondBreakage) {
     return lease;
   });
 
-  auto middleware = std::make_unique<MockMiddlewareHandle>();
-  EXPECT_CALL(*middleware, createAcquireLeaseService(_, _)).Times(1);
-  EXPECT_CALL(*middleware, createReturnLeaseService(_, _)).Times(1);
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  EXPECT_CALL(*logger_interface, logError(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
 
   const std::string kClientNodeName = "dummy_node";
   std::function<void()> bond_break_callback;
-  EXPECT_CALL(*middleware, createBond(kClientNodeName, _))
+  EXPECT_CALL(*middleware_handle, createBond(kClientNodeName, _))
       .WillOnce([&](const std::string&, std::function<void()> callback) {
         bond_break_callback = std::move(callback);
         return nullptr;
       });
 
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
+
   auto lease_manager =
-      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger), std::move(middleware));
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
   lease_manager->initialize();
 
   auto request = std::make_shared<AcquireLease::Request>();
@@ -520,6 +579,220 @@ TEST(TestLeaseManager, revocationOnBondBreakage) {
   auto lease = lease_wallet->GetLease(kBodyResource).move();
   using CompareResult = ::bosdyn::client::Lease::CompareResult;
   ASSERT_EQ(lease.Compare(sublease), CompareResult::NEWER);
+}
+
+/**
+ * Test leasing status reports
+ */
+TEST(TestLeaseManager, leasingStatusReport) {
+  // GIVEN lease listing succeeds the first time it is called
+  auto lease_client = std::make_unique<spot_ros2::test::MockLeaseClient>();
+
+  std::vector<::bosdyn::api::LeaseResource> leased_resources;
+  auto& resource_proto = leased_resources.emplace_back();
+  resource_proto.set_resource(kArmResource);
+  auto& lease_proto = *resource_proto.mutable_lease();
+  lease_proto.set_resource(kBodyResource);
+  const std::string kLeaseEpoch = "unix";
+  lease_proto.set_epoch(kLeaseEpoch);
+  lease_proto.add_sequence(0);
+  auto& lease_owner_proto = *resource_proto.mutable_lease_owner();
+  const std::string kClientName = "dummy_client";
+  lease_owner_proto.set_client_name(kClientName);
+  const std::string kUserName = "dummy_user";
+  lease_owner_proto.set_user_name(kUserName);
+
+  EXPECT_CALL(*lease_client, listLeases).WillOnce(Return(leased_resources));
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  std::unique_ptr<LeaseArray> lease_array_message;
+  EXPECT_CALL(*middleware_handle, publishLeaseArray(_)).WillOnce([&](std::unique_ptr<LeaseArray> message) {
+    lease_array_message = std::move(message);
+  });
+
+  auto* timer_interface_ptr = timer_interface.get();
+  EXPECT_CALL(*timer_interface, setTimer(_, _))
+      .WillOnce([&](const std::chrono::duration<double>&, const std::function<void()>& callback) {
+        timer_interface_ptr->onSetTimer(callback);
+      });
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
+  auto lease_manager =
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
+  lease_manager->initialize();
+
+  // WHEN the timer callback is invoked
+  timer_interface_ptr->trigger();
+
+  // THEN leasing status is published
+  ASSERT_NE(lease_array_message, nullptr);
+  ASSERT_EQ(lease_array_message->resources.size(), 1);
+  auto& resource_message = lease_array_message->resources[0];
+  EXPECT_EQ(resource_message.resource, kArmResource);
+  EXPECT_EQ(resource_message.lease.resource, kBodyResource);
+  EXPECT_EQ(resource_message.lease.epoch, kLeaseEpoch);
+  ASSERT_EQ(resource_message.lease.sequence.size(), 1);
+  EXPECT_EQ(resource_message.lease.sequence[0], 0);
+  EXPECT_EQ(resource_message.lease_owner.client_name, kClientName);
+  EXPECT_EQ(resource_message.lease_owner.user_name, kUserName);
+}
+
+/**
+ * Test leases can be proactively claimed
+ */
+TEST(TestLeaseManager, proactiveClaim) {
+  // GIVEN lease acquisition succeeds the first time it is called on an empty wallet
+  auto lease_client = std::make_unique<spot_ros2::test::MockLeaseClient>();
+  auto lease_wallet = std::make_shared<::bosdyn::client::LeaseWallet>("test_manager");
+  EXPECT_CALL(*lease_client, getLeaseWallet()).WillRepeatedly(Return(lease_wallet));
+
+  EXPECT_CALL(*lease_client, getResourceHierarchy()).WillRepeatedly([]() -> const ::bosdyn::client::ResourceHierarchy& {
+    const auto requirement = ::bosdyn::client::LeaseHierarchyRequirements::ARM_AND_GRIPPER;
+    return ::bosdyn::client::DefaultResourceHierarchy(requirement);
+  });
+
+  auto lease_proto = ::bosdyn::api::Lease();
+  lease_proto.set_resource(kBodyResource);
+  lease_proto.add_sequence(0);
+  auto lease = ::bosdyn::client::Lease(lease_proto);
+  EXPECT_CALL(*lease_client, acquireLease(kBodyResource, _)).WillOnce([&](const std::string&, LeaseUseCallback) {
+    lease_wallet->AddLease(lease);
+    return lease;
+  });
+
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
+
+  auto lease_manager =
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
+  lease_manager->initialize();
+
+  // WHEN leases are claimed
+  auto request = std::make_shared<Trigger::Request>();
+  auto response = std::make_shared<Trigger::Response>();
+  lease_manager->claimLeases(request, response);
+
+  // THEN claim succeeds.
+  EXPECT_TRUE(response->success);
+  EXPECT_TRUE(lease_wallet->GetLease(kBodyResource));
+}
+
+/**
+ * Test proactive lease claims are idempotent
+ */
+TEST(TestLeaseManager, twiceProactiveClaim) {
+  // GIVEN lease wallet contains leases
+  auto lease_client = std::make_unique<spot_ros2::test::MockLeaseClient>();
+  auto lease_wallet = std::make_shared<::bosdyn::client::LeaseWallet>("test_manager");
+
+  {
+    auto lease_proto = ::bosdyn::api::Lease();
+    lease_proto.set_resource(kArmResource);
+    lease_proto.add_sequence(0);
+    auto lease = ::bosdyn::client::Lease(lease_proto);
+    lease_wallet->AddLease(lease);
+  }
+
+  EXPECT_CALL(*lease_client, getLeaseWallet()).WillRepeatedly(Return(lease_wallet));
+
+  EXPECT_CALL(*lease_client, getResourceHierarchy()).WillRepeatedly([]() -> const ::bosdyn::client::ResourceHierarchy& {
+    const auto requirement = ::bosdyn::client::LeaseHierarchyRequirements::ARM_AND_GRIPPER;
+    return ::bosdyn::client::DefaultResourceHierarchy(requirement);
+  });
+
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
+
+  auto lease_manager =
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
+  lease_manager->initialize();
+
+  // WHEN leases are claimed
+  auto request = std::make_shared<Trigger::Request>();
+  auto response = std::make_shared<Trigger::Response>();
+  lease_manager->claimLeases(request, response);
+
+  // THEN claim succeeds.
+  EXPECT_TRUE(response->success);
+}
+
+/**
+ * Test leases can be forcibly released
+ */
+TEST(TestLeaseManager, forcedRelease) {
+  // GIVEN lease wallet contains leases
+  auto lease_client = std::make_unique<spot_ros2::test::MockLeaseClient>();
+  auto lease_wallet = std::make_shared<::bosdyn::client::LeaseWallet>("test_manager");
+
+  {
+    auto lease_proto = ::bosdyn::api::Lease();
+    lease_proto.set_resource(kBodyResource);
+    lease_proto.add_sequence(0);
+    auto lease = ::bosdyn::client::Lease(lease_proto);
+    lease_wallet->AddLease(lease);
+  }
+
+  EXPECT_CALL(*lease_client, getLeaseWallet()).WillRepeatedly(Return(lease_wallet));
+
+  EXPECT_CALL(*lease_client, returnLease(_)).WillOnce([&](const ::bosdyn::client::Lease& lease) {
+    lease_wallet->RemoveLease(lease.GetResource());
+    return true;
+  });
+
+  EXPECT_CALL(*lease_client, getResourceHierarchy()).WillRepeatedly([]() -> const ::bosdyn::client::ResourceHierarchy& {
+    const auto requirement = ::bosdyn::client::LeaseHierarchyRequirements::ARM_AND_GRIPPER;
+    return ::bosdyn::client::DefaultResourceHierarchy(requirement);
+  });
+
+  auto timer_interface = std::make_unique<spot_ros2::test::MockTimerInterface>();
+  EXPECT_CALL(*timer_interface, setTimer(_, _)).Times(1);
+  auto logger_interface = std::make_unique<spot_ros2::test::MockLoggerInterface>();
+  EXPECT_CALL(*logger_interface, logInfo(_)).Times(AnyNumber());
+  auto middleware_handle = std::make_unique<MockMiddlewareHandle>();
+  EXPECT_CALL(*middleware_handle, createClaimLeasesService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createAcquireLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReturnLeaseService(_, _)).Times(1);
+  EXPECT_CALL(*middleware_handle, createReleaseLeasesService(_, _)).Times(1);
+  constexpr double kLeaseCheckRate = 1.0;  // Hz
+
+  auto lease_manager =
+      std::make_unique<LeaseManager>(std::move(lease_client), std::move(logger_interface), std::move(timer_interface),
+                                     std::move(middleware_handle), kLeaseCheckRate);
+  lease_manager->initialize();
+
+  // WHEN leases are released
+  auto request = std::make_shared<Trigger::Request>();
+  auto response = std::make_shared<Trigger::Response>();
+  lease_manager->releaseLeases(request, response);
+
+  // THEN release succeeds.
+  EXPECT_TRUE(response->success);
+
+  EXPECT_THAT(lease_wallet->GetAllLeases(), IsEmpty());
 }
 
 }  // namespace spot_ros2::lease::test

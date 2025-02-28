@@ -18,8 +18,10 @@ namespace spot_ros2::lease {
 class LeaseManagerNode {
  public:
   explicit LeaseManagerNode(std::shared_ptr<rclcpp::Node> node, std::unique_ptr<SpotApi> spot_api,
-                            std::shared_ptr<ParameterInterfaceBase> parameter_interface,
-                            std::shared_ptr<LoggerInterfaceBase> logger_interface);
+                            std::unique_ptr<LeaseManager::MiddlewareHandle> middleware_handle,
+                            std::unique_ptr<ParameterInterfaceBase> parameter_interface,
+                            std::unique_ptr<TimerInterfaceBase> timer_interface,
+                            std::unique_ptr<LoggerInterfaceBase> logger_interface);
 
   explicit LeaseManagerNode(const rclcpp::NodeOptions& node_options = rclcpp::NodeOptions{});
 
@@ -39,7 +41,9 @@ class LeaseManagerNode {
   std::unique_ptr<LeaseManager> internal_;
 
   void initialize(std::shared_ptr<rclcpp::Node> node, std::unique_ptr<SpotApi> spot_api,
-                  std::shared_ptr<ParameterInterfaceBase> parameter_interface,
-                  const std::shared_ptr<LoggerInterfaceBase> logger_interface);
+                  std::unique_ptr<LeaseManager::MiddlewareHandle> middleware_handle,
+                  std::unique_ptr<ParameterInterfaceBase> parameter_interface,
+                  std::unique_ptr<TimerInterfaceBase> timer_interface,
+                  std::unique_ptr<LoggerInterfaceBase> logger_interface);
 };
 }  // namespace spot_ros2::lease

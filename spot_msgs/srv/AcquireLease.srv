@@ -1,5 +1,6 @@
 string client_name
 string resource_name
+bool force
 ---
 bool success
 string message

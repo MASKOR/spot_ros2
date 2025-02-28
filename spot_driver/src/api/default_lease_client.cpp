@@ -72,6 +72,18 @@ tl::expected<bool, std::string> DefaultLeaseClient::returnLease(const ::bosdyn::
   }
 }
 
+tl::expected<std::vector<::bosdyn::api::LeaseResource>, std::string> DefaultLeaseClient::listLeases() {
+  try {
+    auto result = lease_client_->ListLeases();
+    if (!result) {
+      return tl::make_unexpected(result.status.Chain("Could not list leases").message());
+    }
+    return std::vector(result.response.resources().begin(), result.response.resources().end());
+  } catch (const std::exception& ex) {
+    return tl::make_unexpected("Failed to take lease: " + std::string{ex.what()});
+  }
+}
+
 std::shared_ptr<::bosdyn::client::LeaseWallet> DefaultLeaseClient::getLeaseWallet() const {
   return lease_client_->GetLeaseWallet();
 }

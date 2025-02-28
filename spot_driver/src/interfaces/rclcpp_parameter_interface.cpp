@@ -30,6 +30,7 @@ constexpr auto kParameterPreferredOdomFrame = "preferred_odom_frame";
 constexpr auto kParameterTFRoot = "tf_root";
 constexpr auto kParameterNameGripperless = "gripperless";
 constexpr auto kParameterTimeSyncTimeout = "timesync_timeout";
+constexpr auto kParameterNameLeaseRate = "lease_rate";
 
 /**
  * @brief Get a rclcpp parameter. If the parameter has not been declared, declare it with the provided default value and
@@ -251,4 +252,10 @@ std::string RclcppParameterInterface::getSpotName() const {
     return "";
   }
 }
+
+std::optional<double> RclcppParameterInterface::getLeaseRate() const {
+  const double lease_rate = declareAndGetParameter<double>(node_, kParameterNameLeaseRate, kDefaultLeaseRate);
+  return lease_rate > 0.0 ? std::make_optional(lease_rate) : std::nullopt;
+}
+
 }  // namespace spot_ros2
