@@ -279,23 +279,27 @@ std::vector<hardware_interface::CommandInterface> SpotHardware::export_command_i
 
 hardware_interface::CallbackReturn SpotHardware::on_deactivate(const rclcpp_lifecycle::State& /*previous_state*/) {
   stop_command_stream();
+  if (!power_off()) {
+    return hardware_interface::CallbackReturn::ERROR;
+  }
   release_lease();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 hardware_interface::CallbackReturn SpotHardware::on_shutdown(const rclcpp_lifecycle::State& /*previous_state*/) {
-  stop_state_stream();
   stop_command_stream();
-  release_lease();
   if (!power_off()) {
     return hardware_interface::CallbackReturn::ERROR;
   }
+  release_lease();
+  stop_state_stream();
   leasing_interface_.reset();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 hardware_interface::CallbackReturn SpotHardware::on_cleanup(const rclcpp_lifecycle::State& /*previous_state*/) {
   stop_state_stream();
+  leasing_interface_.reset();
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -436,35 +440,51 @@ bool SpotHardware::get_lease() {
 }
 
 bool SpotHardware::power_on() {
-  if (powered_on_) {
-    RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Robot is already powered on.");
-    return true;
+  switch (leasing_mode_) {
+    case LeasingMode::DIRECT: {
+      if (powered_on_) {
+        RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Robot is already powered on.");
+        return true;
+      }
+      RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powering on...");
+      const auto power_status = robot_->PowerOnMotors(std::chrono::seconds(60), 1.0);
+      if (!power_status) {
+        RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Could not power on the robot");
+        return false;
+      }
+      RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powered on!");
+      powered_on_ = true;
+      return true;
+    }
+    case LeasingMode::PROXIED: {
+      RCLCPP_DEBUG(rclcpp::get_logger("SpotHardware"), "Robot power is managed elsewhere, skipping power on.");
+      return true;
+    }
   }
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powering on...");
-  const auto power_status = robot_->PowerOnMotors(std::chrono::seconds(60), 1.0);
-  if (!power_status) {
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Could not power on the robot");
-    return false;
-  }
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powered on!");
-  powered_on_ = true;
-  return true;
 }
 
 bool SpotHardware::power_off() {
-  if (!powered_on_) {
-    RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Robot is already powered off.");
-    return true;
+  switch (leasing_mode_) {
+    case LeasingMode::DIRECT: {
+      if (!powered_on_) {
+        RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Robot is already powered off.");
+        return true;
+      }
+      bosdyn::api::RobotCommand poweroff_command = ::bosdyn::client::SafePowerOffCommand();
+      auto poweroff_res = command_client_->RobotCommand(poweroff_command);
+      if (!poweroff_res) {
+        RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Failed to complete the safe power off command");
+        return false;
+      }
+      RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powered off!");
+      powered_on_ = false;
+      return true;
+    }
+    case LeasingMode::PROXIED: {
+      RCLCPP_DEBUG(rclcpp::get_logger("SpotHardware"), "Robot power is managed elsewhere, skipping power off.");
+      return true;
+    }
   }
-  bosdyn::api::RobotCommand poweroff_command = ::bosdyn::client::SafePowerOffCommand();
-  auto poweroff_res = command_client_->RobotCommand(poweroff_command);
-  if (!poweroff_res) {
-    RCLCPP_ERROR(rclcpp::get_logger("SpotHardware"), "Failed to complete the safe power off command");
-    return false;
-  }
-  RCLCPP_INFO(rclcpp::get_logger("SpotHardware"), "Powered off!");
-  powered_on_ = false;
-  return true;
 }
 
 void state_stream_loop(std::stop_token stop_token, ::bosdyn::client::RobotStateStreamingClient* stateStreamClient,
