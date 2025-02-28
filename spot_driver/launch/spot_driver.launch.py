@@ -19,6 +19,7 @@ THIS_PACKAGE = "spot_driver"
 def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     config_file = LaunchConfiguration("config_file")
     launch_rviz = LaunchConfiguration("launch_rviz")
+    controllable = LaunchConfiguration("controllable").perform(context)
     rviz_config_file = LaunchConfiguration("rviz_config_file").perform(context)
     spot_name = LaunchConfiguration("spot_name").perform(context)
     tf_prefix = LaunchConfiguration("tf_prefix").perform(context)
@@ -48,6 +49,15 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
         # Merge the two dicts
         spot_driver_params = {**spot_driver_params, **mock_spot_driver_params}
 
+    if controllable:
+        spot_driver_params.update(
+            {
+                "leasing_mode": "proxied",
+                "use_take_lease": "false",
+                "get_lease_on_action": "true",
+            }
+        )
+
     spot_driver_node = Node(
         package="spot_driver",
         executable="spot_ros2",
@@ -62,6 +72,17 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
         tf_prefix = PathJoinSubstitution([spot_name, ""])
 
     spot_name_param = {"spot_name": spot_name}
+
+    spot_lease_manager_node = Node(
+        package="spot_driver",
+        executable="lease_manager_node",
+        name="lease_manager_node",
+        output="screen",
+        parameters=[config_file, spot_name_param],
+        namespace=spot_name,
+        condition=IfCondition(LaunchConfiguration("controllable")),
+    )
+    ld.add_action(spot_lease_manager_node)
 
     kinematic_node = Node(
         package="spot_driver",
@@ -92,7 +113,6 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             " ",
             "tf_prefix:=",
             tf_prefix,
-            " ",
         ]
     )
     robot_description_params = {"robot_description": robot_description}
@@ -146,6 +166,26 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
     )
     ld.add_action(spot_image_publishers)
 
+    spot_ros2_control = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("spot_ros2_control"), "launch", "spot_ros2_control.launch.py"])
+        ),
+        launch_arguments={
+            "launch_rviz": LaunchConfiguration("launch_rviz"),
+            "config_file": LaunchConfiguration("config_file"),
+            "controllers_config": LaunchConfiguration("controllers_config"),
+            "spot_name": LaunchConfiguration("spot_name"),
+            "hardware_interface": "mock" if mock_enable else "robot",
+            "mock_arm": str(mock_enable and has_arm),
+            "launch_image_publishers": "false",
+            "leasing_mode": "proxied",
+            "control_only": "true",
+            "auto_start": "false",
+        }.items(),
+        condition=IfCondition(LaunchConfiguration("controllable")),
+    )
+    ld.action(spot_ros2_control)
+
 
 def generate_launch_description() -> LaunchDescription:
     launch_args = []
@@ -156,6 +196,23 @@ def generate_launch_description() -> LaunchDescription:
             default_value="",
             description="Path to configuration file for the driver.",
         )
+    )
+    launch_args.append(
+        DeclareBooleanLaunchArgument(
+            "controllable",
+            default_value=False,
+            description="If true, enable low-level control capabilities",
+        )
+    )
+    launch_args.append(
+        DeclareLaunchArgument(
+            "controllers_config",
+            default_value="",
+            description=(
+                "If controllable, configuration file for spot_ros2_control controllers. "
+                "See spot_ros2_control.launch.py for further reference."
+            ),
+        ),
     )
     launch_args.append(
         DeclareLaunchArgument(
