@@ -205,13 +205,11 @@ void RclcppCameraSynchronizer::registerCallback(const DualImageCallbackFn& fn) {
       std::bind(fn, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 }
 
-RclcppCameraHandle::RclcppCameraHandle(const std::shared_ptr<rclcpp::Node>& node)
+RclcppCameraHandle::RclcppCameraHandle(const std::shared_ptr<rclcpp::Node>& node, const std::string& frame_prefix)
     : image_transport_{node},
       camera_publisher_{
           image_transport_.advertiseCamera("virtual_camera/image", 1)},  // Remap to actual topic in launch file
       tf_broadcaster_{node} {
-  const auto spot_name = node->declare_parameter("spot_name", "");
-  const auto frame_prefix = spot_name.empty() ? "" : spot_name + "/";
   // Name of the frame to relate the virtual camera with respect to
   const auto body_frame_param = node->declare_parameter("body_frame", "body");
   body_frame_ = frame_prefix + body_frame_param;
@@ -375,11 +373,13 @@ Transform MiddleCamera::getTransform() {
 ImageStitcher::ImageStitcher(std::unique_ptr<CameraSynchronizerBase> synchronizer,
                              std::unique_ptr<TfListenerInterfaceBase> tf_listener,
                              std::unique_ptr<CameraHandleBase> camera_handle,
-                             std::unique_ptr<LoggerInterfaceBase> logger)
+                             std::unique_ptr<LoggerInterfaceBase> logger,
+                             std::unique_ptr<ParameterInterfaceBase> parameter_interface)
     : synchronizer_{std::move(synchronizer)},
       tf_listener_{std::move(tf_listener)},
       camera_handle_{std::move(camera_handle)},
-      logger_{std::move(logger)} {
+      logger_{std::move(logger)},
+      parameter_interface_{std::move(parameter_interface)} {
   synchronizer_->registerCallback(
       [this](const std::shared_ptr<const Image>& image_left, const std::shared_ptr<const CameraInfo>& info_left,
              const std::shared_ptr<const Image>& image_right, const std::shared_ptr<const CameraInfo>& info_right) {

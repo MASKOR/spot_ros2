@@ -21,8 +21,12 @@
     estop_timeout: 9.0
     start_estop: False
 
-    preferred_odom_frame: "odom" # pass either odom/vision. This will be used in the odometry topic. https://dev.bostondynamics.com/docs/concepts/geometry_and_frames.html?highlight=frame#frames-in-the-spot-robot-world for more info.
-    tf_root: "odom" # Use "odom" (default), "vision", or "body" for the root frame in your TF tree.
+    preferred_odom_frame: "odom" # Allowed values are: [odom, vision], without a prefix. This will be used in the odometry topic. https://dev.bostondynamics.com/docs/concepts/geometry_and_frames.html?highlight=frame#frames-in-the-spot-robot-world for more info.
+    tf_root: "odom" # Allowed values are: [odom, vision, body], without a prefix. This will set the root frame in your TF tree.
+
+    # These parameters may be overridden by the 'spot_name' and 'tf_prefix' launch arguments.
+    spot_name: ""
+    # frame_prefix: "" # Set an explicit prefix for all frames in your TF tree (an empty string is a valid prefix option).
 
     cmd_duration: 0.25 # The duration of cmd_vel commands. Increase this if spot stutters when publishing cmd_vel.
     rgb_cameras: True  # Set to False if your robot has greyscale cameras -- otherwise you won't receive data.

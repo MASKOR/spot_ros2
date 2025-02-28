@@ -37,11 +37,15 @@ class FakeParameterInterface : public ParameterInterfaceBase {
 
   bool getPublishDepthRegisteredImages() const override { return publish_depth_registered_images; }
 
-  std::string getPreferredOdomFrame() const override { return "odom"; }
+  std::string getPreferredOdomFrame() const override { return kDefaultPreferredOdomFrame; }
 
   std::string getTFRoot() const override { return "odom"; }
 
-  std::string getSpotName() const override { return spot_name; }
+  std::optional<std::string> getFramePrefix() const override { return std::nullopt; }
+
+  std::string getSpotNameWithFallbackToNamespace() const override { return spot_name; }
+
+  std::string getFramePrefixWithDefaultFallback() const override { return spot_name + "/"; }
 
   bool getGripperless() const override { return gripperless; }
 

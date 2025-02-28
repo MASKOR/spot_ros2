@@ -15,7 +15,11 @@ class ImageStitcherNode {
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> get_node_base_interface();
 
  private:
+  void initialize(std::unique_ptr<CameraSynchronizerBase> synchronizer,
+                  std::unique_ptr<TfListenerInterfaceBase> tf_listener, std::unique_ptr<LoggerInterfaceBase> logger,
+                  std::unique_ptr<ParameterInterfaceBase> parameter_interface);
+
   std::shared_ptr<rclcpp::Node> node_;
-  ImageStitcher stitcher_;
+  std::unique_ptr<ImageStitcher> stitcher_;
 };
 }  // namespace spot_ros2

@@ -26,8 +26,9 @@ class SpotApi {
 
   virtual ~SpotApi() = default;
 
-  virtual tl::expected<void, std::string> createRobot(const std::string& robot_name, const std::string& ip_address,
-                                                      const std::optional<int>& port = std::nullopt) = 0;
+  virtual tl::expected<void, std::string> createRobot(const std::string& ip_address,
+                                                      const std::optional<int>& port = std::nullopt,
+                                                      const std::string& frame_prefix = "") = 0;
   virtual tl::expected<void, std::string> authenticate(const std::string& username, const std::string& password) = 0;
   virtual tl::expected<bool, std::string> hasArm() const = 0;
   /**

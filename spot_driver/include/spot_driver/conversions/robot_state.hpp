@@ -42,6 +42,26 @@ inline const std::map<const std::string, const std::string> kFriendlyJointNames 
 };
 
 /**
+ * @brief Given an input string and a prefix string which is a substring starting at the beginning of the input string,
+ * return a new string which is the difference between the input string and the prefix string.
+ * @param input
+ * @param prefix
+ * @return A new string which is the difference between the input string and the prefix string.
+ */
+std::string stripPrefix(const std::string& input, const std::string& prefix);
+
+/**
+ * @brief Given an input string and a prefix string, return a new string which is the addition of the prefix string and
+ * the input string. If the input string already contains the prefix substring at the beginning, the output will be the
+ * same as input.
+ * @param input
+ * @param prefix
+ * @return A new string which is the addition of the prefix string and the input string. If the input string already
+ * contains the prefix substring at the beginning, the output will be the same as input.
+ */
+std::string prependPrefix(const std::string& input, const std::string& prefix);
+
+/**
  * @brief Create a BatteryStateArray ROS message by parsing a RobotState message and applying a clock skew to it.
  *
  * @param robot_state Robot state message from Spot.

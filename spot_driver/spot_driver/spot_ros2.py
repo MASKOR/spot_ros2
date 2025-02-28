@@ -244,6 +244,7 @@ class SpotROS(Node):
         self.declare_parameter("initialize_spot_cam", False)
 
         self.declare_parameter("spot_name", "")
+        self.declare_parameter("frame_prefix", Parameter.Type.STRING)
         self.declare_parameter("mock_enable", False)
 
         self.declare_parameter("gripperless", False)
@@ -332,10 +333,9 @@ class SpotROS(Node):
             get_from_env_and_fall_back_to_param("SPOT_CERTIFICATE", self, "certificate", "") or None
         )
 
-        frame_prefix = ""
-        if self.name is not None:
-            frame_prefix = self.name + "/"
-        self.frame_prefix: str = frame_prefix
+        self.frame_prefix: Optional[str] = self.get_parameter_or("frame_prefix", None).value
+        if self.frame_prefix is None:
+            self.frame_prefix = self.name + "/" if self.name is not None else ""
 
         self.tf_name_graph_nav_body: str = self.frame_prefix + "body"
 
@@ -365,6 +365,7 @@ class SpotROS(Node):
                 hostname=self.ip,
                 port=self.port,
                 robot_name=self.name,
+                frame_prefix=self.frame_prefix,
                 logger=self.wrapper_logger,
                 start_estop=self.start_estop.value,
                 estop_timeout=self.estop_timeout.value,

@@ -14,10 +14,10 @@
 namespace spot_ros2 {
 
 tl::expected<int, std::string> getCvPixelFormat(const bosdyn::api::Image_PixelFormat& format);
-std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& robot_name,
+std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& frame_prefix,
                                         const google::protobuf::Duration& clock_skew);
 tl::expected<sensor_msgs::msg::Image, std::string> getDecompressImageMsg(const bosdyn::api::ImageCapture& image_capture,
-                                                                         const std::string& robot_name,
+                                                                         const std::string& frame_prefix,
                                                                          const google::protobuf::Duration& clock_skew);
 
 }  // namespace spot_ros2

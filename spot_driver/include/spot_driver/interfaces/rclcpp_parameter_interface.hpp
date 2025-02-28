@@ -37,7 +37,9 @@ class RclcppParameterInterface : public ParameterInterfaceBase {
   [[nodiscard]] bool getPublishDepthRegisteredImages() const override;
   [[nodiscard]] std::string getPreferredOdomFrame() const override;
   [[nodiscard]] std::string getTFRoot() const override;
-  [[nodiscard]] std::string getSpotName() const override;
+  [[nodiscard]] std::optional<std::string> getFramePrefix() const override;
+  [[nodiscard]] std::string getSpotNameWithFallbackToNamespace() const override;
+  [[nodiscard]] std::string getFramePrefixWithDefaultFallback() const override;
   [[nodiscard]] bool getGripperless() const override;
   [[nodiscard]] std::set<spot_ros2::SpotCamera> getDefaultCamerasUsed(const bool has_arm,
                                                                       const bool gripperless) const override;

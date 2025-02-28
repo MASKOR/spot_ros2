@@ -42,7 +42,9 @@ class ParameterInterfaceBase {
   virtual bool getPublishDepthRegisteredImages() const = 0;
   virtual std::string getPreferredOdomFrame() const = 0;
   virtual std::string getTFRoot() const = 0;
-  virtual std::string getSpotName() const = 0;
+  virtual std::optional<std::string> getFramePrefix() const = 0;
+  virtual std::string getSpotNameWithFallbackToNamespace() const = 0;
+  virtual std::string getFramePrefixWithDefaultFallback() const = 0;
   virtual bool getGripperless() const = 0;
   virtual std::set<spot_ros2::SpotCamera> getDefaultCamerasUsed(bool has_arm, bool gripperless) const = 0;
   virtual tl::expected<std::set<spot_ros2::SpotCamera>, std::string> getCamerasUsed(bool has_arm,
@@ -61,8 +63,10 @@ class ParameterInterfaceBase {
   static constexpr bool kDefaultPublishCompressedImages{false};
   static constexpr bool kDefaultPublishDepthImages{true};
   static constexpr bool kDefaultPublishDepthRegisteredImages{true};
-  static constexpr auto kDefaultPreferredOdomFrame = "odom";
-  static constexpr auto kDefaultTFRoot = "odom";
+  static constexpr std::array<const char* const, 2> kValidOdomFrameNames{"odom", "vision"};
+  static constexpr std::array<const char* const, 3> kValidTFRootFrameNames{"odom", "vision", "body"};
+  static constexpr auto kDefaultPreferredOdomFrame = kValidOdomFrameNames[0];
+  static constexpr auto kDefaultTFRoot = kValidTFRootFrameNames[0];
   static constexpr bool kDefaultGripperless{false};
   static constexpr auto kCamerasWithoutHand = {"frontleft", "frontright", "left", "right", "back"};
   static constexpr auto kCamerasWithHand = {"frontleft", "frontright", "left", "right", "back", "hand"};

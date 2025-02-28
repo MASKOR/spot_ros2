@@ -82,7 +82,7 @@ Further documentation on how each of these packages can be used can be found in 
 * [`spot_driver`](spot_driver): Core driver for operating Spot. This contains all of the necessary topics, services, and actions for controlling Spot and receiving state information over ROS 2.
   * The driver can be launched via the following command after building and sourcing your workspace. More details can be found on the [`spot_driver` README](spot_driver/README.md).
     ```
-    ros2 launch spot_driver spot_driver.launch.py [config_file:=<path/to/config.yaml>] [spot_name:=<Spot Name>] [launch_rviz:=<True|False>] [launch_image_publishers:=<True|False>] [publish_point_clouds:=<True|False>] [uncompress_images:=<True|False>] [publish_compressed_images:=<True|False>] [stitch_front_images:=<True|False>]
+    ros2 launch spot_driver spot_driver.launch.py [config_file:=<path/to/config.yaml>] [spot_name:=<Spot Name>] [tf_prefix:=<TF Frame Prefix>] [launch_rviz:=<True|False>] [launch_image_publishers:=<True|False>] [publish_point_clouds:=<True|False>] [uncompress_images:=<True|False>] [publish_compressed_images:=<True|False>] [stitch_front_images:=<True|False>]
     ```
 * [`spot_examples`](spot_examples): Examples of how to control Spot via the Spot driver.
 * [`spot_msgs`](spot_msgs): Custom messages, services, and interfaces relevant for operating Spot.

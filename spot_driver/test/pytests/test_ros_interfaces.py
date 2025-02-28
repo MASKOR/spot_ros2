@@ -1019,6 +1019,9 @@ class SpotDriverTest(unittest.TestCase):
             "NO FEEDBACK_BATTERY_CHANGE_POSE_FEEDBACK_SET | STATUS_COMMAND_OVERRIDDEN",
         )
 
+    def test_frame_prefix_from_spot_name(self) -> None:
+        self.assertEqual(self.spot_ros2.frame_prefix, "Mock_spot/", "spot_name not used in frame_prefix")
+
 
 if __name__ == "__main__":
     unittest.main()

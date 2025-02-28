@@ -18,7 +18,7 @@ namespace spot_ros2 {
 class DefaultImageClient : public ImageClientInterface {
  public:
   DefaultImageClient(::bosdyn::client::ImageClient* image_client, std::shared_ptr<TimeSyncApi> time_sync_api,
-                     const std::string& robot_name);
+                     const std::string& frame_prefix);
 
   [[nodiscard]] tl::expected<GetImagesResult, std::string> getImages(::bosdyn::api::GetImageRequest request,
                                                                      bool uncompress_images,
@@ -27,6 +27,6 @@ class DefaultImageClient : public ImageClientInterface {
  private:
   ::bosdyn::client::ImageClient* image_client_;
   std::shared_ptr<TimeSyncApi> time_sync_api_;
-  std::string robot_name_;
+  std::string frame_prefix_;
 };
 }  // namespace spot_ros2

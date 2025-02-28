@@ -29,10 +29,10 @@ DefaultSpotApi::DefaultSpotApi(const std::string& sdk_client_name, const std::ch
   }
 }
 
-tl::expected<void, std::string> DefaultSpotApi::createRobot(const std::string& robot_name,
-                                                            const std::string& ip_address,
-                                                            const std::optional<int>& port) {
-  robot_name_ = robot_name;
+tl::expected<void, std::string> DefaultSpotApi::createRobot(const std::string& ip_address,
+                                                            const std::optional<int>& port,
+                                                            const std::string& frame_prefix) {
+  frame_prefix_ = frame_prefix;
 
   auto create_robot_result = client_sdk_->CreateRobot(ip_address, ::bosdyn::client::USE_PROXY);
   if (!create_robot_result.status) {
@@ -76,7 +76,7 @@ tl::expected<void, std::string> DefaultSpotApi::authenticate(const std::string& 
   }
   // TODO(jschornak-bdai): apply clock skew in the image publisher instead of in DefaultImageClient
   image_client_interface_ =
-      std::make_shared<DefaultImageClient>(image_client_result.response, time_sync_api_, robot_name_);
+      std::make_shared<DefaultImageClient>(image_client_result.response, time_sync_api_, frame_prefix_);
 
   const auto robot_state_result = robot_->EnsureServiceClient<::bosdyn::client::RobotStateClient>(
       ::bosdyn::client::RobotStateClient::GetDefaultServiceName());

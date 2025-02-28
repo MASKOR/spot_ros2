@@ -40,22 +40,21 @@ tl::expected<int, std::string> getCvPixelFormat(const bosdyn::api::Image_PixelFo
   }
 }
 
-std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& robot_name,
+std_msgs::msg::Header createImageHeader(const bosdyn::api::ImageCapture& image_capture, const std::string& frame_prefix,
                                         const google::protobuf::Duration& clock_skew) {
   std_msgs::msg::Header header;
-  // Omit leading `/` from frame ID if robot_name is empty
-  header.frame_id = (robot_name.empty() ? "" : robot_name + "/") + image_capture.frame_name_image_sensor();
+  header.frame_id = frame_prefix + image_capture.frame_name_image_sensor();
   header.stamp = spot_ros2::robotTimeToLocalTime(image_capture.acquisition_time(), clock_skew);
   return header;
 }
 
 tl::expected<sensor_msgs::msg::Image, std::string> getDecompressImageMsg(const bosdyn::api::ImageCapture& image_capture,
-                                                                         const std::string& robot_name,
+                                                                         const std::string& frame_prefix,
                                                                          const google::protobuf::Duration& clock_skew) {
   const auto& image = image_capture.image();
   auto data = image.data();
 
-  const auto header = createImageHeader(image_capture, robot_name, clock_skew);
+  const auto header = createImageHeader(image_capture, frame_prefix, clock_skew);
   const auto pixel_format_cv = getCvPixelFormat(image.pixel_format());
   if (!pixel_format_cv) {
     return tl::make_unexpected("Failed to determine pixel format: " + pixel_format_cv.error());
