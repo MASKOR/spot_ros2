@@ -95,7 +95,9 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             " ",
         ]
     )
-    robot_description_params = {"robot_description": robot_description}
+    # Publish frequency of the robot state publisher defaults to 20 Hz, resulting in slow TF lookups.
+    # By ignoring the timestamp, we publish a TF update in this node every time there is a joint state update (50 Hz).
+    robot_description_params = {"robot_description": robot_description, "ignore_timestamp": True}
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
