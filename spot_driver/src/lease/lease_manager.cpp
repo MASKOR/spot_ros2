@@ -148,8 +148,12 @@ void LeaseManager::acquireLease(const std::shared_ptr<AcquireLease::Request> req
   std::lock_guard<std::recursive_mutex> lock(mutex_);
 
   const auto& root_resource_hierarchy = lease_client_->getResourceHierarchy();
-  if (!root_resource_hierarchy.HasResource(request->resource_name)) {
-    response->message = request->resource_name + " is not a known resource";
+
+  const std::string& requested_resource_name =
+      !request->resource_name.empty() ? request->resource_name : root_resource_hierarchy.Resource();
+
+  if (!root_resource_hierarchy.HasResource(requested_resource_name)) {
+    response->message = requested_resource_name + " is not a known resource";
     response->success = false;
     return;
   }
@@ -158,11 +162,11 @@ void LeaseManager::acquireLease(const std::shared_ptr<AcquireLease::Request> req
 
   std::unordered_set<std::string> potential_collisions{root_resource_hierarchy.Resource()};
   for (const auto& [name, hierarchy] : root_resource_hierarchy) {
-    if (hierarchy.HasResource(request->resource_name)) {
+    if (hierarchy.HasResource(requested_resource_name)) {
       potential_collisions.insert(name);
     }
   }
-  const auto& resource_hierarchy = root_resource_hierarchy.GetHierarchy(request->resource_name);
+  const auto& resource_hierarchy = root_resource_hierarchy.GetHierarchy(requested_resource_name);
   for (const auto& [name, _] : resource_hierarchy) {
     potential_collisions.insert(name);
   }
@@ -170,44 +174,51 @@ void LeaseManager::acquireLease(const std::shared_ptr<AcquireLease::Request> req
   potential_collisions.insert(leaf_resources.begin(), leaf_resources.end());
 
   bool must_take = false;
-  for (const auto& resource_name : potential_collisions) {
-    if (subleases_.count(resource_name) > 0) {
-      const auto& sublease_proto = subleases_[resource_name].lease.GetProto();
-      const std::string& client_name = *sublease_proto.client_names().rbegin();
-      response->message = resource_name + " is busy, subleased by " + client_name;
-      response->success = false;
-      return;
+  if (request->force) {
+    for (const auto& resource_name : potential_collisions) {
+      if (subleases_.count(resource_name) > 0) {
+        const auto& sublease_proto = subleases_[resource_name].lease.GetProto();
+        const std::string& client_name = *sublease_proto.client_names().rbegin();
+        response->message = resource_name + " is busy, subleased by " + client_name;
+        response->success = false;
+        return;
+      }
+      if (auto existing_lease = lease_wallet->GetLease(resource_name); existing_lease) {
+        must_take = true;
+      }
     }
-    if (auto existing_lease = lease_wallet->GetLease(resource_name); existing_lease) {
-      must_take = true;
+  } else {
+    for (const auto& resource_name : potential_collisions) {
+      subleases_.erase(resource_name);
     }
+    must_take = true;
   }
 
-  auto lease = lease_wallet->AdvanceLease(request->resource_name);
+  auto lease = lease_wallet->AdvanceLease(requested_resource_name);
   if (!lease) {
     using std::placeholders::_1;
     auto callback = std::bind(&LeaseManager::onLeaseRetentionFailure, this, _1);
     if (must_take) {
-      auto result = lease_client_->takeLease(request->resource_name, std::move(callback));
+      auto result = lease_client_->takeLease(requested_resource_name, std::move(callback));
       if (!result) {
         response->message = "failed to take lease: " + result.error();
         response->success = false;
         return;
       }
-      logger_interface_->logInfo(request->resource_name + " lease was taken");
+      logger_interface_->logInfo(requested_resource_name + " lease was taken");
     } else {
-      auto result = lease_client_->acquireLease(request->resource_name, std::move(callback));
+      auto result = lease_client_->acquireLease(requested_resource_name, std::move(callback));
       if (!result) {
         response->message = "failed to acquire lease: " + result.error();
         response->success = false;
         return;
       }
-      logger_interface_->logInfo(request->resource_name + " lease was acquired");
+      logger_interface_->logInfo(requested_resource_name + " lease was acquired");
     }
-    lease = lease_wallet->GetLease(request->resource_name);
+    lease = lease_wallet->GetLease(requested_resource_name);
   }
 
-  auto sublease = lease.move().CreateSublease(request->client_name);
+  auto sublease = lease.move().CreateSublease(requested_resource_name);
   bosdyn_api_msgs::conversions::Convert(sublease.GetProto(), &response->lease);
 
   auto bond = middleware_handle_->createBond(request->client_name, [this, sublease]() {
@@ -229,8 +240,8 @@ void LeaseManager::acquireLease(const std::shared_ptr<AcquireLease::Request> req
   });
   subleases_[request->resource_name] = ManagedSublease{std::move(sublease), std::move(bond)};
 
-  logger_interface_->logInfo(request->resource_name + " sublease was acquired");
-  response->message = request->resource_name + " sublease was acquired";
+  logger_interface_->logInfo(requested_resource_name + " sublease was acquired");
+  response->message = requested_resource_name + " sublease was acquired";
   response->success = true;
 }
 
