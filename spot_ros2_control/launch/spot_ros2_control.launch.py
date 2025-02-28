@@ -53,7 +53,7 @@ def create_controllers_config(spot_name: str, has_arm: bool) -> str:
             config = yaml.safe_load(template_file)
             config[f"{spot_name}/controller_manager"] = config["controller_manager"]
             del config["controller_manager"]
-            keys_to_namespace = ["forward_position_controller", "forward_state_controller"]
+            keys_to_namespace = ["forward_position_controller", "forward_state_controller", "spot_joint_controller"]
 
             for key in keys_to_namespace:
                 key_joints = config[key]["ros__parameters"]["joints"]

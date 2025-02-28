@@ -4,4 +4,9 @@
     General passthrough controller that can forward commands for a set of joints over a set of interfaces.
   </description>
   </class>
+  <class name="spot_controllers/SpotJointController" type="spot_controllers::SpotJointController" base_class_type="controller_interface::ControllerInterface">
+  <description>
+    Forwarding controller useful for forwarding sets of joint commands (including gains) to Spot's hardware interface.
+  </description>
+  </class>
 </library>

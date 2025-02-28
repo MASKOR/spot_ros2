@@ -50,17 +50,24 @@ ament_target_dependencies(
 
 
 # Add example nodes and install them
-add_executable(noarm_squat src/noarm_squat.cpp)
+add_executable(noarm_squat examples/noarm_squat.cpp)
 target_link_libraries(noarm_squat spot_ros2_control)
 
-add_executable(wiggle_arm src/wiggle_arm.cpp)
+add_executable(wiggle_arm examples/wiggle_arm.cpp)
 target_link_libraries(wiggle_arm spot_ros2_control)
 
-add_executable(joint_command_passthrough src/joint_command_passthrough.cpp)
+add_executable(joint_command_passthrough examples/joint_command_passthrough.cpp)
 target_link_libraries(joint_command_passthrough spot_ros2_control)
 
 install(TARGETS noarm_squat wiggle_arm joint_command_passthrough
   DESTINATION lib/${PROJECT_NAME})
+
+install(
+  PROGRAMS
+  examples/set_gripper_gains.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME set_gripper_gains
+)
 
 install(
   DIRECTORY include/

@@ -19,6 +19,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  spot_msgs
 )
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
@@ -37,11 +38,17 @@ generate_parameter_library(
   include/spot_controllers/forward_state_controller_parameters.yaml
 )
 
+generate_parameter_library(
+  spot_joint_controller_parameters
+  include/spot_controllers/spot_joint_controller_parameters.yaml
+)
+
 # Add the hardware interface
 add_library(
   spot_controllers
   SHARED
   src/forward_state_controller.cpp
+  src/spot_joint_controller.cpp
 )
 target_compile_features(spot_controllers PUBLIC cxx_std_20)
 target_include_directories(spot_controllers PUBLIC
@@ -50,7 +57,9 @@ target_include_directories(spot_controllers PUBLIC
 )
 target_link_libraries(
   spot_controllers PUBLIC 
-  forward_state_controller_parameters forward_command_controller::forward_command_controller
+  forward_state_controller_parameters
+  spot_joint_controller_parameters
+  forward_command_controller::forward_command_controller
 )
 ament_target_dependencies(
   spot_controllers PUBLIC
@@ -69,7 +78,7 @@ install(
   DESTINATION include/${PROJECT_NAME}
 )
 
-install(TARGETS spot_controllers forward_state_controller_parameters
+install(TARGETS spot_controllers forward_state_controller_parameters spot_joint_controller_parameters
   EXPORT export_spot_controllers
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

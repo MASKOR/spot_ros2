@@ -52,6 +52,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EStopState.msg"
   "msg/Feedback.msg"
   "msg/FootState.msg"
+  "msg/JointCommand.msg"
   "msg/Lease.msg"
   "msg/LeaseResource.msg"
   "msg/PowerState.msg"
