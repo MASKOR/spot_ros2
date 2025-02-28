@@ -145,6 +145,8 @@ def launch_setup(context: LaunchContext, ld: LaunchDescription) -> None:
             tf_prefix,
             " hardware_interface_type:=",
             LaunchConfiguration("hardware_interface"),
+            " leasing:=",
+            LaunchConfiguration("leasing_mode"),
             login_params,
             gain_params,
         ]
@@ -271,6 +273,12 @@ def generate_launch_description():
                     " commands directly to state. 'robot' uses a custom hardware interface using the Spot C++ SDK to"
                     " connect to the physical robot."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "leasing_mode",
+                default_value="direct",
+                choices=["direct", "proxied"],
+                description="Leasing mode for the robot (need lease manager if proxied).",
             ),
             DeclareLaunchArgument(
                 "config_file",
