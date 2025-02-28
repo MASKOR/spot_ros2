@@ -40,6 +40,10 @@ void StateStreamingHandler::handle_state_streaming(::bosdyn::api::RobotStateStre
   current_position_.assign(position_msg.begin(), position_msg.end());
   current_velocity_.assign(velocity_msg.begin(), velocity_msg.end());
   current_load_.assign(load_msg.begin(), load_msg.end());
+  // Save current foot contact states
+  for (size_t i = 0; i < 4; i++) {
+    current_foot_state_.push_back(robot_state.contact_states(i));
+  }
 }
 
 void StateStreamingHandler::get_joint_states(JointStates& joint_states) {
@@ -49,6 +53,12 @@ void StateStreamingHandler::get_joint_states(JointStates& joint_states) {
   joint_states.position.assign(current_position_.begin(), current_position_.end());
   joint_states.velocity.assign(current_velocity_.begin(), current_velocity_.end());
   joint_states.load.assign(current_load_.begin(), current_load_.end());
+}
+
+void StateStreamingHandler::get_foot_states(std::vector<int>& foot_states) {
+  // lock so that read/write doesn't happen at the same time
+  const std::lock_guard<std::mutex> lock(mutex_);
+  foot_states.assign(current_foot_state_.begin(), current_foot_state_.end());
 }
 
 hardware_interface::CallbackReturn SpotHardware::on_init(const hardware_interface::HardwareInfo& info) {
@@ -138,6 +148,7 @@ hardware_interface::CallbackReturn SpotHardware::on_configure(const rclcpp_lifec
   joint_states_.position.assign(njoints_, 0);
   joint_states_.velocity.assign(njoints_, 0);
   joint_states_.load.assign(njoints_, 0);
+  foot_states_.assign(nfeet, 0);
 
   // Set up the robot using the BD SDK and start command streaming.
   if (!authenticate_robot(hostname_, username_, password_)) {
@@ -276,6 +287,8 @@ hardware_interface::return_type SpotHardware::read(const rclcpp::Time& /*time*/,
     }
     init_state_ = true;
   }
+
+  state_streaming_handler_.get_foot_states(foot_states_);
 
   return hardware_interface::return_type::OK;
 }
